@@ -183,10 +183,9 @@
         }
       }
 
-      // Certificate identifier fallback
-      if (!certificateNo) {
-        certificateNo = aadhaarNo || panNo || null;
-      }
+      // Do NOT fall back to aadhaarNo or panNo as certificateNo — they are
+      // distinct identifier types and conflating them causes the Aadhaar number
+      // to be auto-filled into caste/income certificate number fields.
 
       console.log('%c[ErrorGuard Parser] Document Parsed Result:', 'color: #10b981; font-weight: bold;', {
         name,

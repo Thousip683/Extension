@@ -24,7 +24,11 @@
         const sType = semantic ? semantic.type : null;
         if (sType) foundTypes.add(sType);
 
-        const isRequired = field.hasAttribute('required') || (sType && requiredTypes.includes(sType));
+        // A field is required ONLY if it explicitly carries the HTML `required` attribute.
+        // The rule-profile `requiredTypes` is used below only to detect fields missing
+        // entirely from the DOM — not to override optional fields that happen to share
+        // the same semantic type (e.g. alternatePhone vs primary phone).
+        const isRequired = field.hasAttribute('required');
 
         // Check 1: Missing Required Field
         if (isRequired) {

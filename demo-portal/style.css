@@ -31,12 +31,10 @@ body {
 /* ── 1. National Flag Tricolor Accent Bar ── */
 .national-tricolor-strip {
   height: 4px;
-  background: linear-gradient(
-    to right,
-    #FF9933 0%, #FF9933 33.3%,
-    #FFFFFF 33.3%, #FFFFFF 66.6%,
-    #138808 66.6%, #138808 100%
-  );
+  background: linear-gradient(to right,
+      #FF9933 0%, #FF9933 33.3%,
+      #FFFFFF 33.3%, #FFFFFF 66.6%,
+      #138808 66.6%, #138808 100%);
   width: 100%;
 }
 
@@ -257,7 +255,8 @@ body {
 /* ── 4. Official Mega-Navigation Bar ── */
 .gov-navbar {
   background: #0b2545;
-  border-bottom: 3px solid #d97706; /* Golden saffron subline */
+  border-bottom: 3px solid #d97706;
+  /* Golden saffron subline */
 }
 
 .nav-container {
@@ -312,7 +311,8 @@ body {
 
 @media (max-width: 900px) {
   .nav-menu {
-    display: none; /* Collapses on small viewports */
+    display: none;
+    /* Collapses on small viewports */
   }
 }
 
@@ -352,8 +352,15 @@ body {
 }
 
 @keyframes tickerBlink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.2; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.2;
+  }
 }
 
 .ticker-content {
@@ -855,7 +862,7 @@ input[type="file"] {
 
 .captcha-badge {
   background: #e2e8f0;
-  background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,0,0,0.03) 10px, rgba(0,0,0,0.03) 20px);
+  background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0, 0, 0, 0.03) 10px, rgba(0, 0, 0, 0.03) 20px);
   color: #0b2545;
   font-family: 'Courier New', Courier, monospace;
   font-size: 1.45rem;
@@ -866,7 +873,7 @@ input[type="file"] {
   border-radius: 4px;
   user-select: none;
   text-decoration: line-through;
-  text-shadow: 1px 1px 2px rgba(0,0,0,0.15);
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.15);
 }
 
 .captcha-refresh-btn,
@@ -905,7 +912,8 @@ input[type="file"] {
 }
 
 .btn-submit {
-  background: #007a3d; /* Official Gov Green Submit */
+  background: #007a3d;
+  /* Official Gov Green Submit */
   color: white;
   border: none;
   padding: 0.85rem 2rem;

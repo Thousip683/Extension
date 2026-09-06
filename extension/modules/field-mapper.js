@@ -9,6 +9,13 @@
   window.ErrorGuard = window.ErrorGuard || {};
 
   const PATTERNS = {
+    // FATHER_NAME must be listed BEFORE FULL_NAME so its higher-specificity
+    // regex wins when the label says "Father's Full Name" (which also contains "Full Name").
+    FATHER_NAME: {
+      regex: /(father[_\-\s]?(name|full|guardian)?|guardian[_\-\s]?name|parent[_\-\s]?name|husband[_\-\s]?name)/i,
+      autocomplete: [],
+      types: ['text']
+    },
     FULL_NAME: {
       regex: /(full[_\-\s]?name|applicant[_\-\s]?name|candidate[_\-\s]?name|student[_\-\s]?name|^name$)/i,
       autocomplete: ['name'],

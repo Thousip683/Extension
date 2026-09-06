@@ -162,28 +162,42 @@
     const scanResult = Detector.scan();
     for (const item of scanResult.fields) {
       if (!item.semantic) continue;
-      if (item.semantic.type === 'FULL_NAME' && data.name) {
+      const sType = item.semantic.type;
+
+      // FULL_NAME: fill applicant name only — never touch FATHER_NAME fields
+      if (sType === 'FULL_NAME' && data.name) {
         item.field.value = data.name;
         item.field.dispatchEvent(new Event('input', { bubbles: true }));
         item.field.dispatchEvent(new Event('change', { bubbles: true }));
       }
-      if (item.semantic.type === 'DOB' && data.dob) {
+
+      // FATHER_NAME: skip auto-fill — Aadhaar/PAN does not reliably expose
+      // the father's name in a structured way, so never write to this field.
+      if (sType === 'FATHER_NAME') continue;
+
+      if (sType === 'DOB' && data.dob) {
         const iso = Normalize.date(data.dob);
         item.field.value = item.field.type === 'date' ? (iso || data.dob) : data.dob;
         item.field.dispatchEvent(new Event('input', { bubbles: true }));
         item.field.dispatchEvent(new Event('change', { bubbles: true }));
       }
-      if (item.semantic.type === 'CERTIFICATE_NUMBER' && data.certificateNo) {
+
+      // CERTIFICATE_NUMBER: only fill when the document is genuinely a
+      // certificate — never when it is an Aadhaar or PAN card.
+      const isCertDoc = data.docType && !['AADHAAR', 'PAN'].includes(data.docType.toUpperCase());
+      if (sType === 'CERTIFICATE_NUMBER' && data.certificateNo && isCertDoc) {
         item.field.value = data.certificateNo;
         item.field.dispatchEvent(new Event('input', { bubbles: true }));
         item.field.dispatchEvent(new Event('change', { bubbles: true }));
       }
-      if (item.semantic.type === 'AADHAAR_NUMBER' && (data.aadhaarNo || (data.docType === 'AADHAAR' && data.certificateNo))) {
+
+      if (sType === 'AADHAAR_NUMBER' && (data.aadhaarNo || (data.docType === 'AADHAAR' && data.certificateNo))) {
         item.field.value = data.aadhaarNo || data.certificateNo;
         item.field.dispatchEvent(new Event('input', { bubbles: true }));
         item.field.dispatchEvent(new Event('change', { bubbles: true }));
       }
-      if (item.semantic.type === 'PAN_NUMBER' && (data.panNo || (data.docType === 'PAN' && data.certificateNo))) {
+
+      if (sType === 'PAN_NUMBER' && (data.panNo || (data.docType === 'PAN' && data.certificateNo))) {
         item.field.value = data.panNo || data.certificateNo;
         item.field.dispatchEvent(new Event('input', { bubbles: true }));
         item.field.dispatchEvent(new Event('change', { bubbles: true }));
