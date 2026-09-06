@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>National Scholarship & Certificate Verification Portal - Demo</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- Top Govt Bar -->
+  <div class="gov-topbar">
+    <div class="container topbar-flex">
+      <span>🇮🇳 Government of Andhra Pradesh • Official Application Service</span>
+      <span class="topbar-links">
+        <a href="#help">Helpdesk: 1800-425-0000</a> | 
+        <a href="#guidelines">Guidelines</a>
+      </span>
+    </div>
+  </div>
+
+  <!-- Main Header -->
+  <header class="main-header">
+    <div class="container header-content">
+      <div class="logo-area">
+        <div class="emblem-circle">🏛️</div>
+        <div>
+          <h1>National Scholarship & Certificate Portal</h1>
+          <p class="subtitle">Higher Education & Welfare Department • Online Verification Service</p>
+        </div>
+      </div>
+      <div class="portal-badge">
+        <span class="badge-status">● Live Demo Portal</span>
+        <span class="badge-id">Portal ID: AP-SCHOLAR-2026</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hackathon Quick-Test Bar -->
+  <div class="test-panel-wrapper">
+    <div class="container">
+      <div class="test-panel">
+        <div class="test-panel-header">
+          <strong>⚡ Hackathon Live Demo Panel</strong>
+          <span>Click a scenario below to auto-populate the form & test document:</span>
+        </div>
+        <div class="scenario-buttons">
+          <button type="button" class="scenario-btn btn-success" id="loadScenarioValid">
+            ✅ 1. Perfect Match (Ready)
+          </button>
+          <button type="button" class="scenario-btn btn-warning" id="loadScenarioNameMismatch">
+            ⚠️ 2. Name Typo Mismatch
+          </button>
+          <button type="button" class="scenario-btn btn-danger" id="loadScenarioDobMismatch">
+            ❌ 3. DOB Mismatch
+          </button>
+          <button type="button" class="scenario-btn btn-danger" id="loadScenarioOversized">
+            📁 4. Oversized File (>2MB)
+          </button>
+          <button type="button" class="scenario-btn btn-warning" id="loadScenarioBlurry">
+            👁️ 5. Blurry Document
+          </button>
+          <button type="button" class="scenario-btn btn-secondary" id="loadScenarioMissing">
+            📝 6. Missing Fields
+          </button>
+          <button type="button" class="scenario-btn btn-reset" id="resetFormBtn">
+            🔄 Reset
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content Form -->
+  <main class="container main-layout">
+    <div class="form-container">
+      <div class="form-header">
+        <h2>Post-Matric Scholarship & Fee Reimbursement Application</h2>
+        <p class="form-desc">
+          Please provide accurate details matching your original certificates. Uploaded documents are validated against your entered information before final submission.
+        </p>
+      </div>
+
+      <!-- Submission Status Message Container -->
+      <div id="statusAlert" class="status-alert hidden"></div>
+
+      <form id="scholarshipForm" novalidate>
+        <!-- Personal Details Section -->
+        <fieldset class="form-section">
+          <legend class="section-title">
+            <span class="section-num">1</span> Applicant Personal Information
+          </legend>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="fullName">
+                Full Name (As per SSC / Certificate) <span class="required">*</span>
+              </label>
+              <input 
+                type="text" 
+                id="fullName" 
+                name="full_name" 
+                placeholder="e.g. Siva Kumar" 
+                required
+                autocomplete="name"
+              >
+              <span class="field-hint">Spelling must exactly match your uploaded certificate.</span>
+            </div>
+
+            <div class="form-group">
+              <label for="dob">
+                Date of Birth <span class="required">*</span>
+              </label>
+              <input 
+                type="date" 
+                id="dob" 
+                name="dob" 
+                required
+                autocomplete="bday"
+              >
+              <span class="field-hint">Format: DD/MM/YYYY</span>
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="certificateNo">
+                Income / Caste Certificate Number <span class="required">*</span>
+              </label>
+              <input 
+                type="text" 
+                id="certificateNo" 
+                name="certificate_no" 
+                placeholder="e.g. AP123456" 
+                required
+              >
+              <span class="field-hint">Issued by Revenue Department / Tahsildar</span>
+            </div>
+
+            <div class="form-group">
+              <label for="category">
+                Social Category / Community <span class="required">*</span>
+              </label>
+              <select id="category" name="category" required>
+                <option value="">-- Select Category --</option>
+                <option value="General">General / OC</option>
+                <option value="BC-A">Backward Class (BC-A)</option>
+                <option value="BC-B">Backward Class (BC-B)</option>
+                <option value="SC">Scheduled Caste (SC)</option>
+                <option value="ST">Scheduled Tribe (ST)</option>
+                <option value="EWS">Economically Weaker Section (EWS)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="email">
+                Email Address <span class="required">*</span>
+              </label>
+              <input 
+                type="email" 
+                id="email" 
+                name="email" 
+                placeholder="applicant@example.com" 
+                required
+                autocomplete="email"
+              >
+            </div>
+
+            <div class="form-group">
+              <label for="phone">
+                Mobile Number <span class="required">*</span>
+              </label>
+              <input 
+                type="tel" 
+                id="phone" 
+                name="phone" 
+                placeholder="9876543210" 
+                pattern="[0-9]{10}"
+                required
+                autocomplete="tel"
+              >
+            </div>
+          </div>
+        </fieldset>
+
+        <!-- Document Upload Section -->
+        <fieldset class="form-section">
+          <legend class="section-title">
+            <span class="section-num">2</span> Supporting Document Upload
+          </legend>
+
+          <div class="form-group">
+            <label for="certificateUpload">
+              Upload Original Certificate (PNG, JPG, PDF) <span class="required">*</span>
+            </label>
+            
+            <div class="upload-dropzone" id="dropzone">
+              <div class="dropzone-inner">
+                <div class="upload-icon">📄</div>
+                <div class="upload-instructions">
+                  <strong>Click to browse</strong> or drag & drop certificate here
+                  <p class="upload-rules">Maximum size: <strong>2 MB</strong> • Minimum resolution: <strong>400x300 px</strong></p>
+                </div>
+                <input 
+                  type="file" 
+                  id="certificateUpload" 
+                  name="certificate_file" 
+                  accept="image/png, image/jpeg, application/pdf"
+                  required
+                >
+              </div>
+            </div>
+
+            <!-- Uploaded File Preview Info -->
+            <div id="filePreview" class="file-preview hidden">
+              <div class="file-preview-info">
+                <span class="file-icon">📑</span>
+                <div class="file-meta">
+                  <span id="previewName" class="file-name">document.png</span>
+                  <span id="previewSize" class="file-size">150 KB</span>
+                </div>
+              </div>
+              <button type="button" id="removeFileBtn" class="remove-file-btn" title="Remove file">✕</button>
+            </div>
+          </div>
+        </fieldset>
+
+        <!-- Declaration Section -->
+        <fieldset class="form-section">
+          <legend class="section-title">
+            <span class="section-num">3</span> Self-Declaration & Consent
+          </legend>
+
+          <div class="checkbox-group">
+            <input type="checkbox" id="declaration" name="declaration" required>
+            <label for="declaration">
+              I hereby declare that all details entered above and the uploaded certificate are genuine and belong to me. I understand that any discrepancy or mismatched information will result in immediate disqualification of this application.
+            </label>
+          </div>
+        </fieldset>
+
+        <!-- Submit Button Area -->
+        <div class="form-actions">
+          <button type="submit" id="submitBtn" class="btn-submit">
+            🛡️ Submit Application
+          </button>
+          <button type="button" id="saveDraftBtn" class="btn-secondary-action">
+            Save as Draft
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Sidebar with Rules & Sample Docs -->
+    <aside class="sidebar">
+      <div class="sidebar-card">
+        <h3>📋 Portal Submission Rules</h3>
+        <ul class="rules-list">
+          <li><strong>Full Name:</strong> Must match uploaded certificate exactly.</li>
+          <li><strong>DOB:</strong> Verified against certified birth date.</li>
+          <li><strong>Certificate:</strong> Clear readable copy required.</li>
+          <li><strong>Allowed Types:</strong> PNG, JPG, or PDF.</li>
+          <li><strong>Size Limit:</strong> Max 2 MB (2,048 KB).</li>
+          <li><strong>Readability:</strong> Scans must be sharp and legible.</li>
+        </ul>
+      </div>
+
+      <div class="sidebar-card">
+        <h3>📁 Available Test Documents</h3>
+        <p class="sidebar-desc">You can directly download or test with these pre-generated synthetic certificates:</p>
+        <div class="test-doc-links">
+          <a href="test-docs/valid_certificate.png" download class="doc-link valid">
+            <span>📄 Valid Certificate</span>
+            <small>Siva Kumar • 12/05/2005</small>
+          </a>
+          <a href="test-docs/name_mismatch.png" download class="doc-link warning">
+            <span>📄 Name Mismatch</span>
+            <small>Siva Kumarr (Typo)</small>
+          </a>
+          <a href="test-docs/dob_mismatch.png" download class="doc-link danger">
+            <span>📄 DOB Mismatch</span>
+            <small>18/09/2004</small>
+          </a>
+          <a href="test-docs/blurry_cert.png" download class="doc-link warning">
+            <span>📄 Blurry Certificate</span>
+            <small>Low contrast & blur</small>
+          </a>
+          <a href="test-docs/oversized_doc.png" download class="doc-link danger">
+            <span>📄 Oversized Document</span>
+            <small>> 2 MB limit</small>
+          </a>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- Footer -->
+  <footer class="main-footer">
+    <div class="container footer-content">
+      <p>© 2026 Government of Andhra Pradesh. All rights reserved. Designed for Pre-Submission Error Guard Verification.</p>
+      <p class="disclaimer">Demo environment for InnovX-26 Problem Statement 2: Pre-Submission Error Guard for Official Forms.</p>
+    </div>
+  </footer>
+
+  <script src="demo.js"></script>
+</body>
+</html>

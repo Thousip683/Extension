@@ -1,0 +1,24 @@
+{
+  "name": "pre-submission-error-guard",
+  "version": "1.0.0",
+  "description": "Pre-Submission Error Guard for Official Forms - Chrome Manifest V3 Extension & Demo Portal",
+  "scripts": {
+    "start": "npx -y serve demo-portal -p 3000",
+    "portal": "python -m http.server 3000 --directory demo-portal",
+    "test": "node test/runner.js",
+    "generate-docs": "python demo-portal/test-docs/generate_test_docs.py"
+  },
+  "keywords": [
+    "chrome-extension",
+    "form-validation",
+    "ocr",
+    "pre-submission-guard",
+    "hackathon",
+    "innovx"
+  ],
+  "author": "Pre-Submission Error Guard Team",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "tesseract.js": "^7.0.0"
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "portalId": "ap_scholarship_portal",
+  "name": "National Scholarship & Certificate Portal",
+  "version": "1.0.0",
+  "matchUrlPatterns": [
+    "*demo-portal*",
+    "*localhost*",
+    "*127.0.0.1*",
+    "*index.html*"
+  ],
+  "requiredFields": [
+    "FULL_NAME",
+    "DOB",
+    "CERTIFICATE_NUMBER",
+    "CATEGORY",
+    "EMAIL",
+    "PHONE",
+    "FILE_UPLOAD",
+    "DECLARATION"
+  ],
+  "fileRules": {
+    "maxSizeBytes": 2097152,
+    "acceptedMimeTypes": [
+      "image/png",
+      "image/jpeg",
+      "application/pdf"
+    ],
+    "acceptedExtensions": [
+      ".png",
+      ".jpg",
+      ".jpeg",
+      ".pdf"
+    ],
+    "minWidth": 400,
+    "minHeight": 300,
+    "maxDimensions": {
+      "width": 5000,
+      "height": 5000
+    }
+  },
+  "crossChecks": {
+    "verifyName": {
+      "enabled": true,
+      "fuzzyThreshold": 0.88,
+      "exactThreshold": 1.0
+    },
+    "verifyDob": {
+      "enabled": true,
+      "exactMatch": true
+    },
+    "verifyCertificateNo": {
+      "enabled": true,
+      "exactMatch": true
+    }
+  },
+  "submissionGuard": {
+    "preventSubmitOnBlocking": true,
+    "allowUserOverride": false
+  }
+}

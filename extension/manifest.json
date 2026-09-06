@@ -1,0 +1,74 @@
+{
+  "manifest_version": 3,
+  "name": "Pre-Submission Error Guard for Official Forms",
+  "version": "1.0.0",
+  "description": "Prevents avoidable application rejections by validating form data and uploaded documents before submission.",
+  "permissions": [
+    "activeTab",
+    "storage"
+  ],
+  "host_permissions": [
+    "*://*/*",
+    "file:///*"
+  ],
+  "background": {
+    "service_worker": "background/service-worker.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*/*",
+        "file:///*"
+      ],
+      "js": [
+        "lib/tesseract.min.js",
+        "utils/logger.js",
+        "utils/normalize.js",
+        "utils/storage.js",
+        "rules/schemas.js",
+        "modules/field-mapper.js",
+        "modules/rule-engine.js",
+        "modules/form-validator.js",
+        "modules/file-validator.js",
+        "modules/image-quality.js",
+        "modules/ocr-engine.js",
+        "modules/document-parser.js",
+        "modules/matcher.js",
+        "modules/error-engine.js",
+        "content/detector.js",
+        "content/overlay.js",
+        "content/content.js"
+      ],
+      "css": [
+        "content/content.css"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "rules/demo-portal.json",
+        "assets/*",
+        "lib/*"
+      ],
+      "matches": [
+        "*://*/*",
+        "file:///*"
+      ]
+    }
+  ],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "assets/icon16.png",
+      "48": "assets/icon48.png",
+      "128": "assets/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "assets/icon16.png",
+    "48": "assets/icon48.png",
+    "128": "assets/icon128.png"
+  }
+}

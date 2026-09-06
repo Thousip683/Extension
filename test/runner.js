@@ -1,0 +1,142 @@
+/**
+ * Automated Unit Test Suite for Pre-Submission Error Guard
+ * Tests normalization, fuzzy matching, file validation, and error engine.
+ */
+
+const assert = require('assert');
+
+// Mock browser window.ErrorGuard environment
+global.window = { ErrorGuard: {} };
+
+// Load modules
+require('../extension/utils/normalize.js');
+require('../extension/modules/matcher.js');
+require('../extension/modules/file-validator.js');
+require('../extension/modules/error-engine.js');
+
+const { Normalize, Matcher, FileValidator, ErrorEngine } = global.window.ErrorGuard;
+
+let passed = 0;
+let failed = 0;
+
+function it(desc, fn) {
+  try {
+    fn();
+    console.log(`  ✅ PASS: ${desc}`);
+    passed++;
+  } catch (err) {
+    console.error(`  ❌ FAIL: ${desc}`);
+    console.error('    ', err.message);
+    failed++;
+  }
+}
+
+console.log('\n--- Running Pre-Submission Error Guard Test Suite ---\n');
+
+// 1. Normalization Tests
+console.log('1. Normalization Utilities:');
+it('normalizes string whitespace and casing', () => {
+  assert.strictEqual(Normalize.text('  Siva   Kumar  '), 'siva kumar');
+  assert.strictEqual(Normalize.text('SÍVA KÜMAR'), 'siva kumar');
+});
+
+it('normalizes Indian date formats (DD/MM/YYYY) to canonical ISO', () => {
+  assert.strictEqual(Normalize.date('12/05/2005'), '2005-05-12');
+  assert.strictEqual(Normalize.date('12-05-2005'), '2005-05-12');
+  assert.strictEqual(Normalize.date('2005-05-12'), '2005-05-12');
+});
+
+it('normalizes alphanumeric certificate identifiers', () => {
+  assert.strictEqual(Normalize.identifier(' ap-123456 '), 'AP123456');
+  assert.strictEqual(Normalize.identifier('AP/123/456'), 'AP123456');
+});
+
+// 2. Fuzzy Matcher Tests
+console.log('\n2. Cross-Verification Matcher:');
+it('identifies exact name matches', () => {
+  const res = Matcher.compareNames('Siva Kumar', 'Siva Kumar');
+  assert.strictEqual(res.match, true);
+  assert.strictEqual(res.decision, 'MATCH');
+  assert.strictEqual(res.score, 1.0);
+});
+
+it('flags small name spelling differences for review', () => {
+  const res = Matcher.compareNames('Siva Kumar', 'Siva Kumarr');
+  assert.strictEqual(res.match, false);
+  assert.strictEqual(res.decision, 'REVIEW');
+  assert.ok(res.score >= 0.88, `Score was ${res.score}`);
+});
+
+it('flags major name discrepancies as mismatch', () => {
+  const res = Matcher.compareNames('Siva Kumar', 'Karthik Rao');
+  assert.strictEqual(res.match, false);
+  assert.strictEqual(res.decision, 'MISMATCH');
+  assert.ok(res.score < 0.60, `Score was ${res.score}`);
+});
+
+it('matches equivalent DOB representations canonically', () => {
+  // Form has YYYY-MM-DD from date input, document has DD/MM/YYYY
+  const res = Matcher.compareDob('2005-05-12', '12/05/2005');
+  assert.strictEqual(res.match, true);
+  assert.strictEqual(res.decision, 'MATCH');
+});
+
+it('detects mismatched dates of birth', () => {
+  const res = Matcher.compareDob('2005-05-12', '18/09/2004');
+  assert.strictEqual(res.match, false);
+  assert.strictEqual(res.decision, 'MISMATCH');
+});
+
+// 3. File Validator Tests
+console.log('\n3. File Validation Rules:');
+it('flags files exceeding maximum allowed size', () => {
+  const mockFile = { name: 'cert.png', size: 3000000, type: 'image/png' };
+  const issues = FileValidator.validate(mockFile, { maxSizeBytes: 2097152 });
+  assert.strictEqual(issues.length, 1);
+  assert.strictEqual(issues[0].code, 'FILE_TOO_LARGE');
+  assert.strictEqual(issues[0].severity, 'BLOCKING');
+});
+
+it('flags disallowed file types and extensions', () => {
+  const mockFile = { name: 'malicious.exe', size: 50000, type: 'application/x-msdownload' };
+  const issues = FileValidator.validate(mockFile, {
+    maxSizeBytes: 2097152,
+    acceptedExtensions: ['.png', '.jpg', '.pdf'],
+    acceptedMimeTypes: ['image/png', 'image/jpeg', 'application/pdf']
+  });
+  assert.strictEqual(issues.length, 1);
+  assert.strictEqual(issues[0].code, 'FILE_TYPE_NOT_ALLOWED');
+  assert.strictEqual(issues[0].severity, 'BLOCKING');
+});
+
+// 4. Error Engine Aggregation Tests
+console.log('\n4. Error Engine & Readiness Calculation:');
+it('yields READY TO SUBMIT when 0 blocking issues exist', () => {
+  const report = ErrorEngine.aggregate({
+    formIssues: [],
+    fileIssues: [],
+    qualityIssues: [],
+    crossCheckIssues: [],
+    formData: { full_name: 'Siva Kumar', dob: '2005-05-12', certificate_no: 'AP123456', hasFile: true }
+  });
+  assert.strictEqual(report.isReady, true);
+  assert.strictEqual(report.status, 'READY TO SUBMIT');
+  assert.strictEqual(report.healthScore, 100);
+});
+
+it('yields NOT READY TO SUBMIT when blocking issues are present', () => {
+  const report = ErrorEngine.aggregate({
+    formIssues: [],
+    fileIssues: [{ code: 'FILE_TOO_LARGE', severity: 'BLOCKING', message: 'Too big' }],
+    qualityIssues: [],
+    crossCheckIssues: [{ code: 'NAME_MISMATCH', severity: 'BLOCKING', message: 'Name mismatch' }],
+    formData: {}
+  });
+  assert.strictEqual(report.isReady, false);
+  assert.strictEqual(report.status, 'NOT READY TO SUBMIT');
+  assert.strictEqual(report.issues.blocking.length, 2);
+  assert.strictEqual(report.healthScore, 50); // 100 - 25*2
+});
+
+console.log(`\nResults: ${passed} passed, ${failed} failed.\n`);
+if (failed > 0) process.exit(1);
