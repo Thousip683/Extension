@@ -39,8 +39,9 @@
       const warningIssues = allIssues.filter(i => i.severity === 'WARNING');
       const infoIssues = allIssues.filter(i => i.severity === 'INFO');
 
-      const isReady = blockingIssues.length === 0;
-      const status = isReady ? 'READY TO SUBMIT' : 'NOT READY TO SUBMIT';
+      const hasAnyEnteredData = !!(formData.full_name || formData.dob || formData.certificate_no || formData.aadhaar_no || formData.pan_no || formData.hasFile || formData.declaration);
+      const isReady = hasAnyEnteredData && blockingIssues.length === 0;
+      const status = isReady ? 'READY TO SUBMIT' : (hasAnyEnteredData ? 'NOT READY TO SUBMIT' : 'INCOMPLETE APPLICATION');
 
       // Application Health Score calculation (0 to 100)
       // Total potential baseline points: 100

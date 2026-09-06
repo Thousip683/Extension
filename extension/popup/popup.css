@@ -154,6 +154,13 @@ body {
   border: 1px solid #dc2626;
 }
 
+.pill-idle,
+.pill-standby {
+  background: #1e293b;
+  color: #94a3b8;
+  border: 1px solid #475569;
+}
+
 .hero-info h2 {
   font-size: 0.95rem;
   font-weight: 700;
@@ -505,3 +512,102 @@ body {
 .ai-help-link a:hover {
   text-decoration: underline;
 }
+
+/* ── Mode Toggle Card ── */
+.mode-card {
+  background: linear-gradient(145deg, #1e293b, #0f172a);
+  border: 1px solid #334155;
+  transition: border-color 0.3s ease;
+}
+
+.mode-card.mode-ai-active {
+  border-color: #6366f1;
+  background: linear-gradient(145deg, #1e293b, #1e1b4b);
+}
+
+.mode-card-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mode-icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.mode-card .card-header h3 {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+  color: #94a3b8;
+}
+
+.mode-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: rgba(148, 163, 184, 0.15);
+  color: #94a3b8;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  transition: all 0.3s ease;
+}
+
+.mode-badge.badge-ai {
+  background: rgba(99, 102, 241, 0.2);
+  color: #a5b4fc;
+  border-color: rgba(99, 102, 241, 0.4);
+}
+
+.mode-desc {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin: 6px 0 10px 0;
+  line-height: 1.45;
+}
+
+.mode-desc strong {
+  color: #cbd5e1;
+}
+
+.mode-toggle-row {
+  display: flex;
+  justify-content: flex-start;
+}
+
+.mode-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #1e293b;
+  border: 1px solid #475569;
+  color: #cbd5e1;
+  font-size: 0.775rem;
+  font-weight: 600;
+  padding: 7px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.mode-toggle-btn:hover {
+  background: #334155;
+  border-color: #6366f1;
+  color: #e0e7ff;
+}
+
+.mode-toggle-btn.btn-switch-manual {
+  background: rgba(99, 102, 241, 0.1);
+  border-color: #6366f1;
+  color: #a5b4fc;
+}
+
+.mode-toggle-btn.btn-switch-manual:hover {
+  background: rgba(99, 102, 241, 0.2);
+}
+

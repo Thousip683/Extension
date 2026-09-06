@@ -52,6 +52,11 @@
       autocomplete: [],
       types: ['select-one', 'text']
     },
+    GENDER: {
+      regex: /(gender|sex)/i,
+      autocomplete: ['sex'],
+      types: ['select-one', 'text']
+    },
     EMAIL: {
       regex: /(email|mail|e[_\-\s]?mail)/i,
       autocomplete: ['email'],

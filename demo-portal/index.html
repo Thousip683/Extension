@@ -272,66 +272,58 @@
             </div>
 
             <div class="form-group">
-              <label for="certificateNo">
-                1.6 Caste / Income Certificate Number (MeeSeva ID) <span class="required">*</span>
-              </label>
-              <input type="text" id="certificateNo" name="certificate_no" placeholder="e.g. AP123456" required>
-              <span class="field-hint">Issued by Revenue Department / Tahsildar</span>
-            </div>
-          </div>
-
-          <div class="form-grid">
-            <div class="form-group">
               <label for="phone">
-                1.7 Aadhaar-Linked Mobile Number <span class="required">*</span>
+                1.6 Aadhaar-Linked Mobile Number <span class="required">*</span>
               </label>
               <input type="tel" id="phone" name="phone" placeholder="9876543210" pattern="[0-9]{10}" maxlength="10"
                 required autocomplete="tel">
               <span class="field-hint">10-digit mobile number registered for Aadhaar OTP authentication.</span>
             </div>
+          </div>
 
+          <div class="form-grid">
             <div class="form-group">
               <label for="email">
-                1.8 Active Email Address <span class="required">*</span>
+                1.7 Active Email Address <span class="required">*</span>
               </label>
               <input type="email" id="email" name="email" placeholder="applicant@domain.gov.in" required
                 autocomplete="email">
               <span class="field-hint">Official application acknowledgement and alerts will be sent here.</span>
+            </div>
+
+            <div class="form-group">
+              <label for="motherName">
+                1.8 Mother's Full Name <span class="optional-tag">(Optional)</span>
+              </label>
+              <input type="text" id="motherName" name="mother_name" placeholder="e.g. Lakshmi Devi">
+              <span class="field-hint">As recorded on family ration card / educational records.</span>
             </div>
           </div>
 
           <!-- Optional Demographic Fields -->
           <div class="form-grid">
             <div class="form-group">
-              <label for="motherName">
-                1.9 Mother's Full Name <span class="optional-tag">(Optional)</span>
-              </label>
-              <input type="text" id="motherName" name="mother_name" placeholder="e.g. Lakshmi Devi">
-              <span class="field-hint">As recorded on family ration card / educational records.</span>
-            </div>
-
-            <div class="form-group">
               <label for="alternatePhone">
-                1.10 Alternate Mobile Number <span class="optional-tag">(Optional)</span>
+                1.9 Alternate Mobile Number <span class="optional-tag">(Optional)</span>
               </label>
               <input type="tel" id="alternatePhone" name="alternate_phone" placeholder="9876501234" pattern="[0-9]{10}"
                 maxlength="10">
               <span class="field-hint">Backup contact number of parent / guardian.</span>
             </div>
-          </div>
 
-          <div class="form-grid">
             <div class="form-group">
               <label for="familyIncome">
-                1.11 Annual Family Income (INR) <span class="optional-tag">(Optional)</span>
+                1.10 Annual Family Income (INR) <span class="optional-tag">(Optional)</span>
               </label>
               <input type="number" id="familyIncome" name="family_income" placeholder="e.g. 150000" min="0" step="1000">
               <span class="field-hint">Annual family income as per official Tahsildar certificate.</span>
             </div>
+          </div>
 
+          <div class="form-grid">
             <div class="form-group">
               <label for="pwdStatus">
-                1.12 Differently Abled / PwD Status <span class="optional-tag">(Optional)</span>
+                1.11 Differently Abled / PwD Status <span class="optional-tag">(Optional)</span>
               </label>
               <select id="pwdStatus" name="pwd_status">
                 <option value="No">No / Not Applicable</option>
@@ -369,7 +361,7 @@
                 2.1 Aadhaar Card Number (UIDAI 12-Digit UID) <span class="required">*</span>
               </label>
               <input type="text" id="aadhaarNumber" name="aadhaar_number" placeholder="e.g. 1234 5678 9012"
-                maxlength="14" required autocomplete="off">
+                maxlength="14" minlength="14" pattern="[0-9]{4}\s[0-9]{4}\s[0-9]{4}" title="12-digit Aadhaar number formatted as XXXX XXXX XXXX" required autocomplete="off">
               <span class="field-hint">12-digit Unique Identification Number printed on Aadhaar card.</span>
             </div>
 
@@ -378,6 +370,7 @@
                 2.2 Permanent Account Number (PAN) <span class="required">*</span>
               </label>
               <input type="text" id="panNumber" name="pan_number" placeholder="e.g. ABCDE1234F" maxlength="10"
+                minlength="10" pattern="[A-Za-z]{5}[0-9]{4}[A-Za-z]{1}" title="10-character PAN in the format ABCDE1234F"
                 style="text-transform: uppercase;" required autocomplete="off">
               <span class="field-hint">10-character alphanumeric PAN issued by Income Tax Department.</span>
             </div>
@@ -480,42 +473,6 @@
                 </div>
               </div>
               <button type="button" id="removePanBtn" class="remove-file-btn" title="Remove PAN file">✕</button>
-            </div>
-          </div>
-
-          <!-- Upload 3: Income / Caste Certificate -->
-          <div class="doc-upload-block">
-            <div class="doc-upload-header">
-              <span class="doc-badge">DOCUMENT 3</span>
-              <label for="certificateUpload" class="doc-label">
-                Upload Original Income / Caste Certificate <span class="required">*</span>
-              </label>
-            </div>
-
-            <div class="upload-dropzone" id="dropzoneCert">
-              <div class="dropzone-inner">
-                <div class="upload-icon">📜</div>
-                <div class="upload-instructions">
-                  <strong>Click to browse</strong> or drag & drop official certificate here
-                  <p class="upload-rules">Allowed formats: <strong>PDF, PNG, JPEG</strong> • Maximum file size:
-                    <strong>2 MB</strong>
-                  </p>
-                </div>
-                <input type="file" id="certificateUpload" name="certificate_file"
-                  accept="image/png, image/jpeg, application/pdf" required>
-              </div>
-            </div>
-
-            <div id="filePreviewCert" class="file-preview hidden">
-              <div class="file-preview-info">
-                <span class="file-icon">📑</span>
-                <div class="file-meta">
-                  <span id="previewNameCert" class="file-name">certificate.png</span>
-                  <span id="previewSizeCert" class="file-size">150 KB</span>
-                </div>
-              </div>
-              <button type="button" id="removeCertBtn" class="remove-file-btn"
-                title="Remove Certificate file">✕</button>
             </div>
           </div>
         </fieldset>

@@ -59,7 +59,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function renderReport(report) {
-    if (!report) return renderEmptyState();
+    if (!report || report.hasForm === false) return renderEmptyState();
 
     const { isReady, healthScore, issues, checklist } = report;
 
@@ -139,13 +139,24 @@ document.addEventListener('DOMContentLoaded', async () => {
   function renderEmptyState() {
     scoreText.textContent = '--%';
     circleProgress.setAttribute('stroke-dasharray', '0, 100');
-    statusPill.textContent = 'NO ACTIVE FORM';
-    statusHeadline.textContent = 'Standby Mode';
-    statusDesc.textContent = 'Navigate to a supported portal or open the scholarship demo portal to scan.';
+    circleProgress.className = 'circle';
+    statusPill.textContent = 'STANDBY';
+    statusPill.className = 'hero-status-pill pill-standby';
+    statusHeadline.textContent = 'Safe Standby Mode';
+    statusDesc.textContent = 'No active application form detected on this webpage.';
+
+    // Clear checklist items
+    updateCheckItem(chkForm, null);
+    updateCheckItem(chkDocUploaded, null);
+    updateCheckItem(chkDocSize, null);
+    updateCheckItem(chkNameMatch, null);
+    updateCheckItem(chkDobMatch, null);
+
+    issuesCountBadge.textContent = '0';
     issuesContainer.innerHTML = `
       <div class="empty-issues">
         <span class="empty-icon">🛡️</span>
-        <p>Open the demo application portal to begin automated pre-submission checking.</p>
+        <p>Error Guard is running safely in the background. Open an application form to start inspection.</p>
       </div>
     `;
   }
@@ -273,6 +284,79 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     loadAiSettings();
   }
+
+  // ─── Mode Toggle Controller ───
+  const modeCard       = document.getElementById('modeCard');
+  const modeIcon       = document.getElementById('modeIcon');
+  const modeBadge      = document.getElementById('modeBadge');
+  const modeDesc       = document.getElementById('modeDesc');
+  const modeToggleBtn  = document.getElementById('modeToggleBtn');
+  const modeToggleBtnIcon = document.getElementById('modeToggleBtnIcon');
+  const modeToggleBtnText = document.getElementById('modeToggleBtnText');
+
+  function applyModeUI(isAiMode) {
+    if (!modeCard) return;
+    if (isAiMode) {
+      modeCard.classList.add('mode-ai-active');
+      if (modeIcon) modeIcon.textContent = '🤖';
+      if (modeBadge) { modeBadge.textContent = 'AI Auto-Fill'; modeBadge.className = 'mode-badge badge-ai'; }
+      if (modeDesc) modeDesc.innerHTML = 'AI reads your uploaded documents and <strong>auto-fills matching fields</strong>. Inline highlights and auto-correct chips are active.';
+      if (modeToggleBtn) modeToggleBtn.className = 'mode-toggle-btn btn-switch-manual';
+      if (modeToggleBtnIcon) modeToggleBtnIcon.textContent = '📋';
+      if (modeToggleBtnText) modeToggleBtnText.textContent = 'Switch to Manual Guard';
+    } else {
+      modeCard.classList.remove('mode-ai-active');
+      if (modeIcon) modeIcon.textContent = '📋';
+      if (modeBadge) { modeBadge.textContent = 'Manual Guard'; modeBadge.className = 'mode-badge'; }
+      if (modeDesc) modeDesc.innerHTML = 'Fill out your form, upload documents, then click <strong>"Check for Errors"</strong> to review issues in the sidebar only.';
+      if (modeToggleBtn) modeToggleBtn.className = 'mode-toggle-btn';
+      if (modeToggleBtnIcon) modeToggleBtnIcon.textContent = '🤖';
+      if (modeToggleBtnText) modeToggleBtnText.textContent = 'Switch to AI Auto-Fill';
+    }
+  }
+
+  async function loadMode() {
+    let isAiMode = false;
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      const res = await new Promise(r => chrome.storage.local.get(['EG_AI_AUTOFILL_MODE'], r));
+      isAiMode = res?.EG_AI_AUTOFILL_MODE === true;
+    }
+    applyModeUI(isAiMode);
+    return isAiMode;
+  }
+
+  if (modeToggleBtn) {
+    modeToggleBtn.addEventListener('click', async () => {
+      // Read current mode and flip it
+      let currentIsAi = false;
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        const res = await new Promise(r => chrome.storage.local.get(['EG_AI_AUTOFILL_MODE'], r));
+        currentIsAi = res?.EG_AI_AUTOFILL_MODE === true;
+      }
+      const newMode = !currentIsAi;
+
+      // Persist
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        await new Promise(r => chrome.storage.local.set({ EG_AI_AUTOFILL_MODE: newMode }, r));
+      }
+
+      // Update popup UI immediately
+      applyModeUI(newMode);
+
+      // Notify active tab content script
+      if (typeof chrome !== 'undefined' && chrome.tabs) {
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+          if (tabs[0]?.id) {
+            chrome.tabs.sendMessage(tabs[0].id, { action: 'SET_MODE', aiAutoFillMode: newMode }, () => {
+              if (chrome.runtime.lastError) {} // silence error if content script isn't loaded
+            });
+          }
+        });
+      }
+    });
+  }
+
+  loadMode();
 
   // Initial load
   loadStatus();

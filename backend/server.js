@@ -52,26 +52,45 @@ const GEMINI_PROMPT = `You are an expert AI document inspector specializing in I
 // ── Form-Aware Field Mapping Prompt ──
 // Used by /api/map-form-fields — receives both the document and the form schema
 function buildFormMappingPrompt(formSchema) {
-  return `You are an AI assistant helping auto-fill a government web form from an uploaded identity document.
+  return `You are an AI assistant helping inspect and auto-fill a government web form from an uploaded identity document.
 
 Here is the web form's field schema (JSON array). Each entry describes one form field:
 ${JSON.stringify(formSchema, null, 2)}
 
 Your task:
-1. Analyze the uploaded document (image or PDF).
-2. Extract all readable information from the document.
-3. Map the extracted values to the correct form fields based on the field's label, id, name, and type.
-4. Return ONLY a JSON object where each key is the field's "fieldKey" (from the schema) and the value is what should be filled in.
-5. Set a field's value to null if the document does not contain information for that field.
-6. For date fields (type="date"), always return the value in YYYY-MM-DD format.
-7. For Aadhaar number fields, format as "XXXX XXXX XXXX".
-8. For PAN number fields, use uppercase (e.g. ABCDE1234F).
-9. Never fill a field labeled "father" or "guardian" with the applicant's own name.
-10. Never put an Aadhaar/PAN number into a caste/income certificate number field.
+1. Analyze the uploaded document (image or PDF) carefully.
+2. Check image clarity and readability:
+   - Determine if the document is BLURRY, out of focus, motion-blurred, degraded, or too low quality to read names, dates, or ID numbers accurately.
+   - If blurry or illegible, set "_isBlurred": true, and set "_blurReason": "Uploaded document is blurry or unreadable. Please upload a clear document."
+   - If the document is sharp, clear, and legible, set "_isBlurred": false, and "_blurReason": null.
+3. Classify the EXACT type of document as one of:
+   - "AADHAAR" (Aadhaar Card / e-Aadhaar)
+   - "PAN" (Permanent Account Number Card / e-PAN)
+   - "CASTE_CERTIFICATE" (Caste / Community Certificate)
+   - "INCOME_CERTIFICATE" (Income Certificate)
+   - "CERTIFICATE" (General Government Certificate)
+   - "MARKSHEET" (Marks memo / Academic Transcript / 10th SSC)
+   - "OTHER" (Any other document)
+4. Extract all readable information from the document. If the document is blurred or unreadable, leave field values as null.
+5. Map the extracted values to the correct form fields based on the field's label, id, name, and type.
+6. Return ONLY a JSON object where:
+   - Key "_documentType": string ("AADHAAR" | "PAN" | "CASTE_CERTIFICATE" | "INCOME_CERTIFICATE" | "CERTIFICATE" | "MARKSHEET" | "OTHER")
+   - Key "_isBlurred": boolean (true if image is blurry/out of focus/illegible, false if clear)
+   - Key "_blurReason": string or null
+   - Each other key is the field's "fieldKey" (from the schema) and the value is what should be filled in.
+   - Set a field's value to null if the document does not contain information for that field or is unreadable.
+7. For date fields (type="date"), always return the value in YYYY-MM-DD format.
+8. For Aadhaar number fields, format as "XXXX XXXX XXXX".
+9. For PAN number fields, use uppercase (e.g. ABCDE1234F).
+10. Never fill a field labeled "father" or "guardian" with the applicant's own name.
+11. Never put an Aadhaar/PAN number into a caste/income certificate number field.
 
 IMPORTANT: Return ONLY valid JSON — no markdown, no explanation, no code blocks.
 Example output format:
 {
+  "_documentType": "AADHAAR",
+  "_isBlurred": false,
+  "_blurReason": null,
   "fullName": "Siva Kumar",
   "dob": "2005-05-12",
   "aadhaarNumber": "1234 5678 9012",
@@ -310,8 +329,15 @@ const server = http.createServer(async (req, res) => {
 
         if (!fieldMap) throw lastError || new Error('All Gemini models failed for form mapping');
 
+        let documentType = fieldMap._documentType || null;
+        let isBlurred = fieldMap._isBlurred === true;
+        let blurReason = fieldMap._blurReason || null;
+        delete fieldMap._documentType;
+        delete fieldMap._isBlurred;
+        delete fieldMap._blurReason;
+
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ success: true, fieldMap }));
+        res.end(JSON.stringify({ success: true, fieldMap, documentType, isBlurred, blurReason }));
 
       } catch (err) {
         console.error('[AI Backend Form-Mapping Error]', err.message);

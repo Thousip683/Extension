@@ -74,6 +74,7 @@
               code: 'INVALID_DATE',
               field: sType,
               elementId: field.id,
+              element: field,
               severity: 'BLOCKING',
               message: 'Invalid Date of Birth format. Please enter a valid date (DD/MM/YYYY).',
               fix: 'Correct the date to DD/MM/YYYY or select from the calendar.'
@@ -89,24 +90,59 @@
               code: 'INVALID_PHONE',
               field: sType,
               elementId: field.id,
+              element: field,
               severity: 'WARNING',
               message: 'Mobile number should be a 10-digit number.',
               fix: 'Verify your 10-digit mobile number.'
             });
           }
         }
-      }
 
-      // Check missing required semantic fields that weren't even detected in the DOM
-      for (const reqType of requiredTypes) {
-        if (!foundTypes.has(reqType) && reqType !== 'DECLARATION') {
-          issues.push({
-            code: 'REQUIRED_FIELD_MISSING',
-            field: reqType,
-            severity: 'BLOCKING',
-            message: `Mandatory field (${reqType}) is missing from the application.`,
-            fix: `Provide the missing ${reqType} information.`
-          });
+        // Check 4: Aadhaar Number Format (UIDAI 12-Digit UID requirement)
+        if (sType === 'AADHAAR_NUMBER' && value && value.trim() !== '') {
+          const cleanAadhaar = value.replace(/\D/g, '');
+          if (cleanAadhaar.length !== 12) {
+            issues.push({
+              code: 'INVALID_AADHAAR_NUMBER',
+              field: sType,
+              elementId: field.id,
+              element: field,
+              severity: 'BLOCKING',
+              message: `Aadhaar Number must be exactly 12 digits (currently ${cleanAadhaar.length} digit${cleanAadhaar.length === 1 ? '' : 's'} entered: "${value}").`,
+              fix: 'Please enter all 12 digits of your Aadhaar UID number.'
+            });
+          }
+        }
+
+        // Check 5: PAN Number Format (10-character alphanumeric: 5 letters, 4 digits, 1 letter)
+        if (sType === 'PAN_NUMBER' && value && value.trim() !== '') {
+          const cleanPan = value.trim().toUpperCase().replace(/[\s\-]/g, '');
+          if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(cleanPan)) {
+            issues.push({
+              code: 'INVALID_PAN_NUMBER',
+              field: sType,
+              elementId: field.id,
+              element: field,
+              severity: 'BLOCKING',
+              message: `PAN Number must be 10 characters (5 uppercase letters, 4 digits, 1 letter, e.g. ABCDE1234F; currently "${value}").`,
+              fix: 'Please enter a valid 10-character Permanent Account Number.'
+            });
+          }
+        }
+
+        // Check 6: Email Format
+        if (sType === 'EMAIL' && value && value.trim() !== '') {
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) {
+            issues.push({
+              code: 'INVALID_EMAIL',
+              field: sType,
+              elementId: field.id,
+              element: field,
+              severity: 'WARNING',
+              message: `Invalid email format: "${value}".`,
+              fix: 'Please enter a valid email address (e.g. applicant@domain.gov.in).'
+            });
+          }
         }
       }
 

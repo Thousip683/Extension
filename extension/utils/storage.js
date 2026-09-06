@@ -82,6 +82,17 @@
 
     async removeGoogleApiKey() {
       return await this.remove('google_gemini_api_key');
+    },
+
+    // ─── Extension Mode Management ───
+    // false = Manual Guard (default), true = AI Auto-Fill
+    async getAiAutoFillMode() {
+      const val = await this.get('EG_AI_AUTOFILL_MODE');
+      return val === true;
+    },
+
+    async setAiAutoFillMode(enabled) {
+      return await this.set('EG_AI_AUTOFILL_MODE', !!enabled);
     }
   };
 })();

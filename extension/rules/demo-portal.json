@@ -11,7 +11,8 @@
   "requiredFields": [
     "FULL_NAME",
     "DOB",
-    "CERTIFICATE_NUMBER",
+    "AADHAAR_NUMBER",
+    "PAN_NUMBER",
     "CATEGORY",
     "EMAIL",
     "PHONE",
@@ -48,7 +49,11 @@
       "enabled": true,
       "exactMatch": true
     },
-    "verifyCertificateNo": {
+    "verifyAadhaar": {
+      "enabled": true,
+      "exactMatch": true
+    },
+    "verifyPan": {
       "enabled": true,
       "exactMatch": true
     }

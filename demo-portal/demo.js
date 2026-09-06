@@ -15,7 +15,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const dob = document.getElementById('dob');
   const gender = document.getElementById('gender');
   const category = document.getElementById('category');
-  const certNo = document.getElementById('certificateNo');
   const phone = document.getElementById('phone');
   const email = document.getElementById('email');
   const aadhaarNumber = document.getElementById('aadhaarNumber');
@@ -150,10 +149,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
   setupFileUpload(aadhaarUpload, filePreviewAadhaar, previewNameAadhaar, previewSizeAadhaar, removeAadhaarBtn);
   setupFileUpload(panUpload, filePreviewPan, previewNamePan, previewSizePan, removePanBtn);
-  setupFileUpload(certUpload, filePreviewCert, previewNameCert, previewSizeCert, removeCertBtn);
+  if (certUpload) setupFileUpload(certUpload, filePreviewCert, previewNameCert, previewSizeCert, removeCertBtn);
 
-  // Auto-format Aadhaar Number into 4-digit groups (XXXX XXXX XXXX)
+  // Auto-format Aadhaar Number into 4-digit groups (XXXX XXXX XXXX) & live validation hint
   if (aadhaarNumber) {
+    const aadhaarHint = aadhaarNumber.parentElement ? aadhaarNumber.parentElement.querySelector('.field-hint') : null;
+    const updateAadhaarHint = () => {
+      const digits = aadhaarNumber.value.replace(/\D/g, '');
+      if (digits.length > 0 && digits.length < 12) {
+        aadhaarNumber.setCustomValidity(`Aadhaar number must be exactly 12 digits (currently ${digits.length} entered).`);
+        if (aadhaarHint) {
+          aadhaarHint.textContent = `⚠️ Incomplete Aadhaar: exactly 12 digits required (${digits.length}/12 entered).`;
+          aadhaarHint.style.color = '#dc2626';
+          aadhaarHint.style.fontWeight = '600';
+        }
+      } else {
+        aadhaarNumber.setCustomValidity('');
+        if (aadhaarHint) {
+          aadhaarHint.textContent = '12-digit Unique Identification Number printed on Aadhaar card.';
+          aadhaarHint.style.color = '';
+          aadhaarHint.style.fontWeight = '';
+        }
+      }
+    };
+
     aadhaarNumber.addEventListener('input', (e) => {
       let val = e.target.value.replace(/\D/g, '').slice(0, 12);
       let formatted = '';
@@ -162,14 +181,40 @@ document.addEventListener('DOMContentLoaded', () => {
         formatted += val[i];
       }
       e.target.value = formatted;
+      updateAadhaarHint();
     });
+
+    aadhaarNumber.addEventListener('blur', updateAadhaarHint);
   }
 
-  // Auto-uppercase PAN Number (ABCDE1234F)
+  // Auto-uppercase PAN Number (ABCDE1234F) & live validation hint
   if (panNumber) {
+    const panHint = panNumber.parentElement ? panNumber.parentElement.querySelector('.field-hint') : null;
+    const updatePanHint = () => {
+      const val = panNumber.value.trim().toUpperCase();
+      if (val.length > 0 && (val.length < 10 || !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(val))) {
+        panNumber.setCustomValidity('PAN must be 10 characters (5 letters, 4 digits, 1 letter, e.g. ABCDE1234F).');
+        if (panHint) {
+          panHint.textContent = `⚠️ Incomplete/Invalid PAN: 10 alphanumeric characters required (e.g. ABCDE1234F). Currently ${val.length}/10.`;
+          panHint.style.color = '#dc2626';
+          panHint.style.fontWeight = '600';
+        }
+      } else {
+        panNumber.setCustomValidity('');
+        if (panHint) {
+          panHint.textContent = '10-character alphanumeric PAN issued by Income Tax Department.';
+          panHint.style.color = '';
+          panHint.style.fontWeight = '';
+        }
+      }
+    };
+
     panNumber.addEventListener('input', (e) => {
       e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10);
+      updatePanHint();
     });
+
+    panNumber.addEventListener('blur', updatePanHint);
   }
 
   // Reset Button Handler

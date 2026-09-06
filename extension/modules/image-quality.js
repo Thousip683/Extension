@@ -105,16 +105,14 @@
               }
             }
 
-            const sharpnessScore = diffSum / (pixelCount / 4);
-
-            // A sharp official text document typically has sharpnessScore > 12.0
-            // Intentionally blurred test documents fall below 6.0
-            if (sharpnessScore < 6.0) {
+            // A typical document with text has sharpnessScore between 3.0 and 20.0
+            // Only severely degraded, smoothed, or featureless images fall below 1.8
+            if (sharpnessScore < 1.8) {
               issues.push({
-                code: 'DOCUMENT_LOW_QUALITY',
-                severity: 'WARNING',
-                message: 'Document appears blurry or out of focus. Text may be difficult for officials to verify.',
-                fix: 'Please upload a sharper, in-focus scan or photo of the certificate.'
+                code: 'DOCUMENT_BLURRED',
+                severity: 'BLOCKING',
+                message: `Uploaded document is extremely blurry or out of focus (Sharpness: ${sharpnessScore.toFixed(1)}). Details cannot be verified.`,
+                fix: 'Please upload a clear, sharp, and well-lit document scan.'
               });
             }
           } catch (err) {

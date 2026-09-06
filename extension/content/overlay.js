@@ -17,8 +17,39 @@
       this.currentReport = null;
       this.userHasCheckedErrors = false;
       this.isAiProcessing = false;
+      this.aiProgressPercent = 0;
+      this.aiProgressMsg = '';
       this.aiDocumentReady = false;
       this.lastAiDocData = null;
+      this.aiAutoFillMode = false; // false = Manual Guard, true = AI Auto-Fill
+      this.hasForm = true;
+      this.onProceedSubmit = null;
+    }
+
+    setOnProceedSubmit(callback) {
+      this.onProceedSubmit = callback;
+    }
+
+    /**
+     * Called by content.js when the mode changes (from popup toggle or storage).
+     * Re-renders the badge label accordingly.
+     */
+    setMode(isAiMode) {
+      this.aiAutoFillMode = !!isAiMode;
+      const badgeStatus = document.getElementById('egBadgeStatus');
+      if (!badgeStatus) return;
+      if (!this.userHasCheckedErrors) {
+        if (this.isAiProcessing) return; // let AI progress message stay
+        if (this.aiDocumentReady) {
+          badgeStatus.innerHTML = this.aiAutoFillMode
+            ? `⚡ AI Ready • Click Auto-Fill`
+            : `⚡ AI Ready • Click Check`;
+        } else {
+          badgeStatus.textContent = this.aiAutoFillMode
+            ? '🤖 AI Auto-Fill • Active'
+            : '📋 Manual Guard • Click to Check';
+        }
+      }
     }
 
     init() {
@@ -56,6 +87,10 @@
 
       this.badgeEl.addEventListener('click', (e) => {
         if (e.target.closest('#egBadgeRefresh') || e.target.closest('#egBadgeCheckBtn')) return;
+        if (!this.hasForm) {
+          this.toggleDrawer();
+          return;
+        }
         if (!this.userHasCheckedErrors) {
           this.userHasCheckedErrors = true;
           if (window.ErrorGuard && window.ErrorGuard.reEvaluate) {
@@ -73,7 +108,7 @@
         const badgeStatus = document.getElementById('egBadgeStatus');
         if (badgeStatus) badgeStatus.textContent = 'Refreshing...';
         if (window.ErrorGuard && window.ErrorGuard.reEvaluate) {
-          await window.ErrorGuard.reEvaluate({ showAlerts: true });
+          await window.ErrorGuard.reEvaluate({ showAlerts: this.hasForm ? this.userHasCheckedErrors : false });
         }
         setTimeout(() => {
           btn.classList.remove('eg-spinning');
@@ -129,8 +164,11 @@
             <!-- Issues list -->
           </div>
           <div class="eg-modal-footer">
-            <button type="button" class="eg-btn eg-btn-primary" id="egModalReviewBtn">
-              Review & Fix Errors
+            <button type="button" class="eg-btn eg-btn-secondary" id="egModalReviewBtn">
+              🔍 Review & Fix Errors
+            </button>
+            <button type="button" class="eg-btn eg-btn-override" id="egModalProceedBtn">
+              ⚠️ Proceed & Submit Anyway →
             </button>
           </div>
         </div>
@@ -145,11 +183,65 @@
         this.hideModal();
         this.openDrawer();
       });
+
+      document.getElementById('egModalProceedBtn').addEventListener('click', () => {
+        this.hideModal();
+        if (typeof this.onProceedSubmit === 'function') {
+          this.onProceedSubmit();
+        }
+      });
     }
 
     setAiProgress(percent, msg) {
       this.isAiProcessing = true;
+      this.aiProgressPercent = Math.max(this.aiProgressPercent && this.aiProgressPercent < 100 ? this.aiProgressPercent : 0, percent || 0);
+      if (msg) this.aiProgressMsg = msg;
       if (!this.badgeEl) this.init();
+
+      this.updateProgressUI(this.aiProgressPercent, this.aiProgressMsg);
+
+      if (this.aiProgressPercent < 100) {
+        this.startProgressTicker();
+      } else {
+        this.stopProgressTicker();
+      }
+    }
+
+    startProgressTicker() {
+      if (this.aiProgressTimer) return;
+      this.aiProgressTimer = setInterval(() => {
+        if (!this.isAiProcessing || this.aiProgressPercent >= 96) {
+          return;
+        }
+
+        // Increment naturally: faster early on, pacing down near 95%
+        const remaining = 96 - this.aiProgressPercent;
+        const step = remaining > 35 ? 2 : (remaining > 10 ? 1 : (Math.random() > 0.4 ? 1 : 0));
+        this.aiProgressPercent += step;
+
+        let dynamicMsg = this.aiProgressMsg;
+        if (this.aiProgressPercent >= 25 && this.aiProgressPercent < 50) {
+          dynamicMsg = 'Gemini AI parsing document text & certificate layout...';
+        } else if (this.aiProgressPercent >= 50 && this.aiProgressPercent < 72) {
+          dynamicMsg = 'Extracting applicant particulars & identification numbers...';
+        } else if (this.aiProgressPercent >= 72 && this.aiProgressPercent < 88) {
+          dynamicMsg = 'Matching extracted details with application form fields...';
+        } else if (this.aiProgressPercent >= 88) {
+          dynamicMsg = 'Finalizing AI field mappings & quality verification...';
+        }
+
+        this.updateProgressUI(this.aiProgressPercent, dynamicMsg);
+      }, 150);
+    }
+
+    stopProgressTicker() {
+      if (this.aiProgressTimer) {
+        clearInterval(this.aiProgressTimer);
+        this.aiProgressTimer = null;
+      }
+    }
+
+    updateProgressUI(percent, msg) {
       const badgeStatus = document.getElementById('egBadgeStatus');
       if (badgeStatus) {
         badgeStatus.innerHTML = `<span class="eg-ai-pulse">⚡</span> AI Analyzing... ${percent}%`;
@@ -157,17 +249,43 @@
       if (this.badgeEl) {
         this.badgeEl.className = 'eg-floating-badge eg-ai-analyzing';
       }
+      const checkBtn = document.getElementById('egBadgeCheckBtn');
+      if (checkBtn) checkBtn.style.display = 'none';
+
+      // Live update the drawer loading screen if open
+      if (this.drawerEl && this.drawerEl.classList.contains('eg-drawer-open')) {
+        const drawerScore = document.getElementById('egDrawerScore');
+        if (drawerScore) {
+          drawerScore.textContent = `AI: ${percent}%`;
+          drawerScore.className = 'eg-health-tag eg-tag-ai';
+        }
+        const barFill = this.drawerEl.querySelector('.eg-loading-bar-fill');
+        if (barFill) barFill.style.width = `${percent}%`;
+        const percentText = this.drawerEl.querySelector('.eg-loading-percent');
+        if (percentText) percentText.textContent = `${percent}% Completed`;
+        const subtext = this.drawerEl.querySelector('.eg-drawer-loading-subtext');
+        if (subtext && msg) subtext.textContent = msg;
+      }
+
+      // Live update floating loading banner so the user clearly sees increasing numbers
+      this.showAiLoadingBanner(percent, msg);
     }
 
     setAiReady(docData) {
+      this.stopProgressTicker();
       this.isAiProcessing = false;
       this.aiDocumentReady = true;
       this.lastAiDocData = docData;
+      this.hideAiLoadingBanner();
       if (!this.badgeEl) this.init();
+      const checkBtn = document.getElementById('egBadgeCheckBtn');
+      if (checkBtn && !this.userHasCheckedErrors) checkBtn.style.display = 'inline-flex';
       const badgeStatus = document.getElementById('egBadgeStatus');
       if (!this.userHasCheckedErrors) {
         if (badgeStatus) {
-          badgeStatus.innerHTML = `⚡ AI Ready • Click Check`;
+          badgeStatus.innerHTML = this.aiAutoFillMode
+            ? `⚡ AI Ready • Click Auto-Fill`
+            : `⚡ AI Ready • Click Check`;
         }
         if (this.badgeEl) {
           this.badgeEl.className = 'eg-floating-badge eg-ai-ready';
@@ -175,37 +293,164 @@
       }
     }
 
+    clearAiLoading() {
+      this.stopProgressTicker();
+      this.isAiProcessing = false;
+      this.hideAiLoadingBanner();
+      const checkBtn = document.getElementById('egBadgeCheckBtn');
+      if (checkBtn && !this.userHasCheckedErrors) checkBtn.style.display = 'inline-flex';
+    }
+
+    showDrawerLoading(title, message, percent) {
+      this.isAiProcessing = true;
+      if (percent !== undefined) this.aiProgressPercent = percent;
+      if (message) this.aiProgressMsg = message;
+      if (!this.drawerEl) this.init();
+      this.openDrawer();
+      const body = document.getElementById('egDrawerBody');
+      const drawerScore = document.getElementById('egDrawerScore');
+      if (drawerScore) {
+        drawerScore.textContent = `AI: ${this.aiProgressPercent || 30}%`;
+        drawerScore.className = 'eg-health-tag eg-tag-ai';
+      }
+      if (body) {
+        body.innerHTML = `
+          <div class="eg-status-banner eg-banner-ai-loading">
+            <h4>⚡ ${title || 'AI Verification in Progress'}</h4>
+            <p>${message || this.aiProgressMsg || 'Analyzing uploaded document with Gemini AI...'}</p>
+          </div>
+          <div class="eg-drawer-loading-box">
+            <div class="eg-drawer-spinner-ring"></div>
+            <h4 class="eg-drawer-loading-title">${title || 'AI Document Analysis in Progress'}</h4>
+            <p class="eg-drawer-loading-subtext">
+              ${message || this.aiProgressMsg || 'Extracting structured details and matching against form fields...'}
+            </p>
+            <div class="eg-loading-bar-wrap">
+              <div class="eg-loading-bar-fill" style="width: ${this.aiProgressPercent || 30}%;"></div>
+            </div>
+            <div class="eg-loading-percent">${this.aiProgressPercent || 30}% Completed</div>
+            <div class="eg-loading-notice">
+              ⏳ Waiting for AI analysis to complete before finalizing verification. The audit will display immediately.
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    showAiLoadingBanner(percent, msg) {
+      let banner = document.getElementById('eg-ai-loading-banner');
+      if (!banner) {
+        banner = document.createElement('div');
+        banner.id = 'eg-ai-loading-banner';
+        banner.className = 'eg-ai-loading-banner';
+        banner.innerHTML = `
+          <div class="eg-ai-loading-content">
+            <div class="eg-ai-loading-left">
+              <span class="eg-ai-pulse" style="font-size: 1.3rem;">⚡</span>
+              <div>
+                <div class="eg-ai-loading-title">
+                  <strong>Gemini AI Analyzing Document</strong>
+                  <span class="eg-ai-loading-badge" id="egAiLoadingPercent">${percent}%</span>
+                </div>
+                <p class="eg-ai-loading-desc" id="egAiLoadingDesc">${msg || 'Reading document & preparing auto-fill...'}</p>
+              </div>
+            </div>
+            <div class="eg-ai-loading-spinner"></div>
+          </div>
+          <div class="eg-ai-loading-bar-wrap">
+            <div class="eg-ai-loading-bar-fill" id="egAiLoadingBarFill" style="width: ${percent}%;"></div>
+          </div>
+        `;
+        document.body.appendChild(banner);
+      } else {
+        const badge = document.getElementById('egAiLoadingPercent');
+        const desc = document.getElementById('egAiLoadingDesc');
+        const fill = document.getElementById('egAiLoadingBarFill');
+        if (badge) badge.textContent = `${percent}%`;
+        if (desc && msg) desc.textContent = msg;
+        if (fill) fill.style.width = `${percent}%`;
+      }
+    }
+
+    hideAiLoadingBanner() {
+      const banner = document.getElementById('eg-ai-loading-banner');
+      if (banner) {
+        banner.remove();
+      }
+    }
+
     /**
      * Updates overlay states based on the latest validation report
      * @param {object} report - output of ErrorEngine.aggregate
-     * @param {object} [options] - display options { showAlerts, openDrawer }
+     * @param {object} [options] - display options { showAlerts, openDrawer, highlightFields }
+     *   highlightFields: when false, inline red borders and tooltips are suppressed even
+     *                    when showAlerts is true (used in Manual Guard mode).
+     *                    Defaults to true when showAlerts is true.
      */
     update(report, options = {}) {
       this.currentReport = report;
       if (!this.badgeEl) this.init();
 
-      const showAlerts = options.showAlerts !== undefined ? options.showAlerts : this.userHasCheckedErrors;
-      this.userHasCheckedErrors = showAlerts;
-
       const badgeStatus = document.getElementById('egBadgeStatus');
       const drawerScore = document.getElementById('egDrawerScore');
       const checkBtn = document.getElementById('egBadgeCheckBtn');
 
-      // Clear previous field outlines
-      this.clearFieldHighlights();
+      // Check if page has no active form
+      if (!report || report.hasForm === false) {
+        this.hasForm = false;
+        this.clearFieldHighlights();
+        if (checkBtn) checkBtn.style.display = 'none';
+        this.badgeEl.className = 'eg-floating-badge eg-standby';
+        if (badgeStatus) badgeStatus.textContent = 'Standby • No Form';
+        if (drawerScore) {
+          drawerScore.textContent = 'Status: Standby';
+          drawerScore.className = 'eg-health-tag';
+        }
+        this.renderDrawerContent(report, false);
+        if (options.openDrawer) this.openDrawer();
+        return;
+      }
+
+      this.hasForm = true;
+
+      const showAlerts = options.showAlerts !== undefined ? options.showAlerts : this.userHasCheckedErrors;
+      this.userHasCheckedErrors = showAlerts;
+
+      // In Manual Guard mode, even after checking, we don't paint fields red
+      const highlightFields = options.highlightFields !== undefined
+        ? options.highlightFields
+        : (showAlerts && this.aiAutoFillMode);
+
+      if (this.isAiProcessing) {
+        if (checkBtn) checkBtn.style.display = 'none';
+        this.badgeEl.className = 'eg-floating-badge eg-ai-analyzing';
+        if (badgeStatus) {
+          badgeStatus.innerHTML = `<span class="eg-ai-pulse">⚡</span> AI Analyzing... ${this.aiProgressPercent || 0}%`;
+        }
+        if (drawerScore) {
+          drawerScore.textContent = `AI: ${this.aiProgressPercent || 0}%`;
+          drawerScore.className = 'eg-health-tag eg-tag-ai';
+        }
+        this.renderDrawerContent(report, showAlerts);
+        if (options.openDrawer) this.openDrawer();
+        return;
+      }
 
       if (!showAlerts) {
         // Calm, non-intrusive idle state: No red boxes on blank fields!
+        this.clearFieldHighlights();
         if (checkBtn) checkBtn.style.display = 'inline-flex';
 
-        if (this.isAiProcessing) {
-          this.badgeEl.className = 'eg-floating-badge eg-ai-analyzing';
-        } else if (this.aiDocumentReady) {
+        if (this.aiDocumentReady) {
           this.badgeEl.className = 'eg-floating-badge eg-ai-ready';
-          if (badgeStatus) badgeStatus.innerHTML = `⚡ AI Ready • Click Check`;
+          if (badgeStatus) badgeStatus.innerHTML = this.aiAutoFillMode
+            ? `⚡ AI Ready • Click Auto-Fill`
+            : `⚡ AI Ready • Click Check`;
         } else {
           this.badgeEl.className = 'eg-floating-badge eg-idle';
-          if (badgeStatus) badgeStatus.textContent = 'Active • Click to Check';
+          if (badgeStatus) badgeStatus.textContent = this.aiAutoFillMode
+            ? '🤖 AI Auto-Fill • Active'
+            : '📋 Manual Guard • Click to Check';
         }
 
         if (drawerScore) {
@@ -217,6 +462,7 @@
         if (checkBtn) checkBtn.style.display = 'none';
 
         if (report.isReady) {
+          this.clearFieldHighlights();
           this.badgeEl.className = 'eg-floating-badge eg-ready';
           if (badgeStatus) badgeStatus.textContent = 'READY TO SUBMIT';
           if (drawerScore) {
@@ -232,9 +478,11 @@
             drawerScore.className = 'eg-health-tag eg-tag-error';
           }
 
-          // Highlight problematic fields on the actual form
-          for (const issue of report.issues.blocking) {
-            this.highlightField(issue);
+          // Only paint red field borders in AI Auto-Fill mode
+          if (highlightFields) {
+            this.syncFieldHighlights(report.issues.blocking);
+          } else {
+            this.clearFieldHighlights();
           }
         }
       }
@@ -246,28 +494,65 @@
       }
     }
 
-    highlightField(issue) {
-      let el = null;
-      if (issue.elementId) {
-        el = document.getElementById(issue.elementId);
-      }
-      if (!el && issue.field) {
-        el = document.querySelector(`[name="${issue.field}"], #${issue.field}`);
-      }
+    syncFieldHighlights(issues = []) {
+      const activeElements = new Set();
 
-      if (el) {
-        el.classList.add('eg-field-error');
-        this.highlightedElements.add(el);
+      for (const issue of issues) {
+        // Never paint untouched empty fields red while the user is filling out the form!
+        // Empty required field warnings should only appear when the user explicitly clicks "Check for Errors" or submits.
+        if (issue.code === 'REQUIRED_FIELD_MISSING' && !this.userHasCheckedErrors) {
+          continue;
+        }
 
-        // Add inline error tooltip if not present
-        const existingTooltip = el.parentElement.querySelector('.eg-inline-tooltip');
-        if (!existingTooltip) {
-          const tooltip = document.createElement('div');
-          tooltip.className = 'eg-inline-tooltip';
-          tooltip.innerHTML = `⚠️ <strong>${issue.code}:</strong> ${issue.message}`;
-          el.parentElement.appendChild(tooltip);
+        let el = issue.element || null;
+        if (!el && issue.elementId) el = document.getElementById(issue.elementId);
+        if (!el && issue.field) el = document.querySelector(`[name="${issue.field}"], #${issue.field}`);
+
+        if (el) {
+          activeElements.add(el);
+          el.classList.add('eg-field-error');
+          this.highlightedElements.add(el);
+
+          // If file input or contained within an upload dropzone, highlight the dropzone container
+          const dropzone = (el.type === 'file' || el.tagName.toLowerCase() === 'input') ? el.closest('.upload-dropzone') : null;
+          if (dropzone) {
+            activeElements.add(dropzone);
+            dropzone.classList.add('eg-field-error');
+            this.highlightedElements.add(dropzone);
+          }
+
+          const parent = dropzone || el.parentElement || el;
+          const existingTooltip = parent.querySelector('.eg-inline-tooltip');
+          const tooltipHtml = `⚠️ <strong>${issue.code}:</strong> ${issue.message}`;
+          if (existingTooltip) {
+            if (existingTooltip.innerHTML !== tooltipHtml) {
+              existingTooltip.innerHTML = tooltipHtml;
+            }
+          } else {
+            const tooltip = document.createElement('div');
+            tooltip.className = 'eg-inline-tooltip';
+            tooltip.innerHTML = tooltipHtml;
+            parent.appendChild(tooltip);
+          }
         }
       }
+
+      // Remove highlight and tooltip from elements that are no longer in error
+      for (const el of Array.from(this.highlightedElements)) {
+        if (!activeElements.has(el)) {
+          el.classList.remove('eg-field-error');
+          const dropzone = (el.type === 'file' || el.tagName?.toLowerCase() === 'input') ? el.closest('.upload-dropzone') : null;
+          if (dropzone) dropzone.classList.remove('eg-field-error');
+          const parent = dropzone || el.parentElement || el;
+          const tooltip = parent.querySelector('.eg-inline-tooltip');
+          if (tooltip) tooltip.remove();
+          this.highlightedElements.delete(el);
+        }
+      }
+    }
+
+    highlightField(issue) {
+      this.syncFieldHighlights([issue]);
     }
 
     clearFieldHighlights() {
@@ -278,11 +563,60 @@
         el.remove();
       });
       this.highlightedElements.clear();
+      this.hideWrongDocBanner();
+      this.hideBlurRejectedBanner();
     }
 
     renderDrawerContent(report, showAlerts = true) {
       const body = document.getElementById('egDrawerBody');
       if (!body) return;
+
+      // 1. AI Loading State in Drawer
+      if (this.isAiProcessing) {
+        body.innerHTML = `
+          <div class="eg-status-banner eg-banner-ai-loading">
+            <h4>⚡ AI Document Processing Active</h4>
+            <p>${this.aiProgressMsg || 'Analyzing uploaded document with Gemini AI...'}</p>
+          </div>
+          <div class="eg-drawer-loading-box">
+            <div class="eg-drawer-spinner-ring"></div>
+            <h4 class="eg-drawer-loading-title">AI Document Analysis in Progress</h4>
+            <p class="eg-drawer-loading-subtext">
+              ${this.aiProgressMsg || 'Extracting structured details and matching against form fields...'}
+            </p>
+            <div class="eg-loading-bar-wrap">
+              <div class="eg-loading-bar-fill" style="width: ${this.aiProgressPercent || 25}%;"></div>
+            </div>
+            <div class="eg-loading-percent">${this.aiProgressPercent || 25}% Complete</div>
+            <div class="eg-loading-notice">
+              💡 Pre-submission verification will update automatically as soon as AI analysis finishes.
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      // 2. Safe Standby State when No Form is Detected
+      if (!report || report.hasForm === false) {
+        body.innerHTML = `
+          <div class="eg-status-banner eg-banner-idle">
+            <h4>🛡️ Safe Standby Mode</h4>
+            <p>No active form detected on this webpage.</p>
+          </div>
+          <div class="eg-drawer-standby-box">
+            <div class="eg-standby-icon">📄🔍</div>
+            <h4 class="eg-standby-title">No Form Detected</h4>
+            <p class="eg-standby-desc">
+              Error Guard is running safely in the background. When you open a webpage with an application or registration form, pre-submission audits and AI assistance will activate automatically.
+            </p>
+            <div class="eg-standby-tag">
+              <span class="eg-pulse-dot"></span>
+              Listening for form inputs...
+            </div>
+          </div>
+        `;
+        return;
+      }
 
       if (!showAlerts) {
         body.innerHTML = `
@@ -347,8 +681,8 @@
               <span>${report.checklist.document.uploaded && report.checklist.document.sizeValid ? '✅' : '❌'}</span>
               <span>Document Size & Format</span>
             </div>
-            <div class="eg-check-item ${report.checklist.verification.nameMatch !== false && report.checklist.verification.dobMatch !== false ? 'pass' : 'fail'}">
-              <span>${report.checklist.verification.nameMatch !== false && report.checklist.verification.dobMatch !== false ? '✅' : '❌'}</span>
+            <div class="eg-check-item ${(report.checklist.verification.nameMatch === true || report.checklist.verification.dobMatch === true) ? 'pass' : (report.checklist.verification.nameMatch === false || report.checklist.verification.dobMatch === false ? 'fail' : 'pending')}">
+              <span>${(report.checklist.verification.nameMatch === true || report.checklist.verification.dobMatch === true) ? '✅' : (report.checklist.verification.nameMatch === false || report.checklist.verification.dobMatch === false ? '❌' : '⏳')}</span>
               <span>Name & DOB Cross-Check</span>
             </div>
           </div>
@@ -378,7 +712,31 @@
         html += `</div>`;
       }
 
+      if (!report.isReady) {
+        html += `
+          <div class="eg-override-card">
+            <div class="eg-override-info">
+              <strong>Form data is accurate?</strong>
+              <p>If you have verified that your entered details are correct despite AI warnings, you can proceed with submission.</p>
+            </div>
+            <button type="button" class="eg-btn eg-btn-override" id="egDrawerProceedBtn" style="width: 100%; justify-content: center;">
+              ⚠️ Proceed & Submit Anyway →
+            </button>
+          </div>
+        `;
+      }
+
       body.innerHTML = html;
+
+      const drawerProceedBtn = body.querySelector('#egDrawerProceedBtn');
+      if (drawerProceedBtn) {
+        drawerProceedBtn.addEventListener('click', () => {
+          this.closeDrawer();
+          if (typeof this.onProceedSubmit === 'function') {
+            this.onProceedSubmit();
+          }
+        });
+      }
 
       const dismissBtn = document.getElementById('egDrawerDismissAlertsBtn');
       if (dismissBtn) {
@@ -465,7 +823,7 @@
     }
 
     // ─── AI Auto-Fill & Auto-Correct In-Page Components ───
-    showAutoFillBanner(docData, onApply) {
+    showAutoFillBanner(docData, onApply, fieldMap = null) {
       this.hideAutoFillBanner();
       if (!docData || (!docData.name && !docData.dob && !docData.certificateNo)) return;
 
@@ -475,7 +833,48 @@
 
       const typeName = docData.docType === 'AADHAAR' ? 'Aadhaar Card' :
         docData.docType === 'PAN' ? 'PAN Card' :
-          docData.docType === 'CASTE_CERTIFICATE' ? 'Caste Certificate' : 'Official Document';
+          docData.docType === 'CASTE_CERTIFICATE' ? 'Caste Certificate' :
+            docData.docType === 'INCOME_CERTIFICATE' ? 'Income Certificate' :
+              docData.docType === 'MARKSHEET' ? 'Marksheet' : 'Official Document';
+
+      // Human-readable labels and icons for each field key
+      const FIELD_META = {
+        fullName:      { label: 'Name',         icon: '👤' },
+        fatherName:    { label: 'Father Name',   icon: '👨' },
+        motherName:    { label: 'Mother Name',   icon: '👩' },
+        dob:           { label: 'Date of Birth', icon: '📅' },
+        gender:        { label: 'Gender',        icon: '⚧' },
+        aadhaarNumber: { label: 'Aadhaar No.',   icon: '🆔' },
+        panNumber:     { label: 'PAN',           icon: '💳' },
+        certificateNo: { label: 'Certificate No.', icon: '📜' },
+        phone:         { label: 'Mobile',        icon: '📞' },
+        email:         { label: 'Email',         icon: '📧' },
+        category:      { label: 'Category',      icon: '🏷️' }
+      };
+
+      // Fields to skip in the preview (optional/sensitive/not from doc)
+      const SKIP_PREVIEW = new Set([
+        'captchaInput', 'bankAccountNo', 'ifscCode',
+        'alternatePhone', 'familyIncome', 'pwdStatus'
+      ]);
+
+      // Build tag HTML — dynamic from fieldMap if available, else legacy 3-field display
+      let tagsHtml = '';
+      if (fieldMap && typeof fieldMap === 'object') {
+        for (const [key, value] of Object.entries(fieldMap)) {
+          if (!value || SKIP_PREVIEW.has(key)) continue;
+          const meta = FIELD_META[key];
+          if (!meta) continue; // skip unmapped/unknown keys
+          tagsHtml += `<span class="eg-autofill-tag">${meta.icon} ${meta.label}: <strong>${value}</strong></span>`;
+        }
+      } else {
+        // Legacy fallback: only show name / dob / id
+        if (docData.name)          tagsHtml += `<span class="eg-autofill-tag">👤 Name: <strong>${docData.name}</strong></span>`;
+        if (docData.dob)           tagsHtml += `<span class="eg-autofill-tag">📅 DOB: <strong>${docData.dob}</strong></span>`;
+        if (docData.certificateNo) tagsHtml += `<span class="eg-autofill-tag">🆔 ID: <strong>${docData.certificateNo}</strong></span>`;
+      }
+
+      const fieldCount = tagsHtml.split('eg-autofill-tag').length - 1;
 
       banner.innerHTML = `
         <div class="eg-autofill-header">
@@ -483,15 +882,13 @@
             <span class="eg-autofill-sparkle">✨</span>
             <div>
               <strong class="eg-autofill-title">AI Detected ${typeName}</strong>
-              <p class="eg-autofill-subtitle">Details extracted from unlabelled document. Click to auto-fill form:</p>
+              <p class="eg-autofill-subtitle">${fieldCount} field${fieldCount !== 1 ? 's' : ''} ready to fill. Click to auto-fill form:</p>
             </div>
           </div>
           <button type="button" class="eg-banner-close" id="egCloseAutoFill">✕</button>
         </div>
         <div class="eg-autofill-tags">
-          ${docData.name ? `<span class="eg-autofill-tag">👤 Name: <strong>${docData.name}</strong></span>` : ''}
-          ${docData.dob ? `<span class="eg-autofill-tag">📅 DOB: <strong>${docData.dob}</strong></span>` : ''}
-          ${docData.certificateNo ? `<span class="eg-autofill-tag">🆔 ID: <strong>${docData.certificateNo}</strong></span>` : ''}
+          ${tagsHtml}
         </div>
         <div class="eg-autofill-footer">
           <button type="button" class="eg-btn-autofill" id="egApplyAutoFill">
@@ -518,15 +915,183 @@
       if (existing) existing.remove();
     }
 
+    showWrongDocBanner({ expectedType, actualType, fileInputEl, fileName, onReplace } = {}) {
+      this.hideWrongDocBanner();
+      this.hideAutoFillBanner();
+
+      const banner = document.createElement('div');
+      banner.id = 'eg-wrongdoc-banner';
+      banner.className = 'eg-wrongdoc-banner';
+
+      const formatDoc = (t) => {
+        switch (t) {
+          case 'AADHAAR': return 'Aadhaar Card';
+          case 'PAN': return 'PAN Card';
+          case 'CASTE_CERTIFICATE': return 'Caste Certificate';
+          case 'INCOME_CERTIFICATE': return 'Income Certificate';
+          case 'CERTIFICATE': return 'Official Certificate';
+          case 'MARKSHEET': return 'Marksheet / Academic Memo';
+          default: return t ? t.replace(/_/g, ' ') : 'Required Document';
+        }
+      };
+
+      const expectedName = formatDoc(expectedType);
+      const actualName = formatDoc(actualType);
+
+      // Find field label or upload title if possible
+      let slotTitle = '';
+      if (fileInputEl) {
+        if (fileInputEl.id) {
+          const lbl = document.querySelector(`label[for="${fileInputEl.id}"]`);
+          if (lbl) slotTitle = lbl.innerText.replace(/\*/g, '').trim();
+        }
+        if (!slotTitle) {
+          const block = fileInputEl.closest('.doc-upload-block, .form-group');
+          const header = block ? block.querySelector('.doc-label, label, strong') : null;
+          if (header) slotTitle = header.innerText.replace(/\*/g, '').trim();
+        }
+      }
+      if (!slotTitle) slotTitle = `${expectedName} Upload`;
+
+      banner.innerHTML = `
+        <div class="eg-wrongdoc-header">
+          <div class="eg-wrongdoc-header-left">
+            <span class="eg-wrongdoc-icon">🛑</span>
+            <div>
+              <strong class="eg-wrongdoc-title">Wrong Document Detected!</strong>
+              <p class="eg-wrongdoc-subtitle">
+                You uploaded an <strong>${actualName}</strong> into the slot for <strong>${slotTitle}</strong>.
+              </p>
+            </div>
+          </div>
+          <button type="button" class="eg-banner-close" id="egCloseWrongDoc" title="Close">✕</button>
+        </div>
+        <div class="eg-wrongdoc-body">
+          ⚠️ <strong>Document Mismatch:</strong> This field specifically requires a valid <strong>${expectedName}</strong>. Submitting an incorrect document will cause your application to be rejected during verification.
+        </div>
+        <div class="eg-wrongdoc-footer">
+          <button type="button" class="eg-btn-replace-doc" id="egReplaceDocBtn">
+            🔄 Click to Upload ${expectedName}
+          </button>
+          <button type="button" class="eg-btn-dismiss-wrongdoc" id="egDismissWrongDoc">
+            Dismiss
+          </button>
+        </div>
+      `;
+
+      document.body.appendChild(banner);
+
+      const closeBtn = document.getElementById('egCloseWrongDoc');
+      const dismissBtn = document.getElementById('egDismissWrongDoc');
+      const replaceBtn = document.getElementById('egReplaceDocBtn');
+
+      if (closeBtn) closeBtn.addEventListener('click', () => this.hideWrongDocBanner());
+      if (dismissBtn) dismissBtn.addEventListener('click', () => this.hideWrongDocBanner());
+      if (replaceBtn) {
+        replaceBtn.addEventListener('click', () => {
+          this.hideWrongDocBanner();
+          if (typeof onReplace === 'function') {
+            onReplace();
+          } else if (fileInputEl) {
+            fileInputEl.click();
+          }
+        });
+      }
+    }
+
+    hideWrongDocBanner() {
+      const existing = document.getElementById('eg-wrongdoc-banner');
+      if (existing) existing.remove();
+    }
+
+    showBlurRejectedBanner({ fileInputEl, fileName, message, onReplace } = {}) {
+      this.hideBlurRejectedBanner();
+      this.hideWrongDocBanner();
+      this.hideAutoFillBanner();
+
+      const banner = document.createElement('div');
+      banner.id = 'eg-blur-banner';
+      banner.className = 'eg-wrongdoc-banner eg-blur-banner';
+
+      let slotTitle = '';
+      if (fileInputEl) {
+        if (fileInputEl.id) {
+          const lbl = document.querySelector(`label[for="${fileInputEl.id}"]`);
+          if (lbl) slotTitle = lbl.innerText.replace(/\*/g, '').trim();
+        }
+        if (!slotTitle) {
+          const block = fileInputEl.closest('.doc-upload-block, .form-group');
+          const header = block ? block.querySelector('.doc-label, label, strong') : null;
+          if (header) slotTitle = header.innerText.replace(/\*/g, '').trim();
+        }
+      }
+      if (!slotTitle) slotTitle = 'Document';
+
+      banner.innerHTML = `
+        <div class="eg-wrongdoc-header">
+          <div class="eg-wrongdoc-header-left">
+            <span class="eg-wrongdoc-icon">🔍❌</span>
+            <div>
+              <strong class="eg-wrongdoc-title" style="color: #dc2626;">Document Rejected — Blurry / Unreadable!</strong>
+              <p class="eg-wrongdoc-subtitle">
+                The file uploaded for <strong>${slotTitle}</strong> (<em>${fileName || 'document'}</em>) is out of focus or blurred.
+              </p>
+            </div>
+          </div>
+          <button type="button" class="eg-banner-close" id="egCloseBlurDoc" title="Close">✕</button>
+        </div>
+        <div class="eg-wrongdoc-body" style="border-left: 4px solid #dc2626; background: #fef2f2; color: #991b1b; padding: 12px 14px; border-radius: 6px; margin: 10px 0; font-size: 0.88rem; line-height: 1.5;">
+          🚫 <strong>Document Not Accepted:</strong> Government portals require official certificate scans to be sharp and fully legible for verification.<br>
+          💡 <strong>Action Required:</strong> ${message || 'Please upload a clear, sharp, well-lit scan or photo.'}
+        </div>
+        <div class="eg-wrongdoc-footer">
+          <button type="button" class="eg-btn-replace-doc" id="egReplaceBlurDocBtn" style="background: #dc2626; color: #ffffff;">
+            🔄 Upload a Clear, Sharp Document
+          </button>
+          <button type="button" class="eg-btn-dismiss-wrongdoc" id="egDismissBlurDoc">
+            Dismiss
+          </button>
+        </div>
+      `;
+
+      document.body.appendChild(banner);
+
+      const closeBtn = document.getElementById('egCloseBlurDoc');
+      const dismissBtn = document.getElementById('egDismissBlurDoc');
+      const replaceBtn = document.getElementById('egReplaceBlurDocBtn');
+
+      if (closeBtn) closeBtn.addEventListener('click', () => this.hideBlurRejectedBanner());
+      if (dismissBtn) dismissBtn.addEventListener('click', () => this.hideBlurRejectedBanner());
+      if (replaceBtn) {
+        replaceBtn.addEventListener('click', () => {
+          this.hideBlurRejectedBanner();
+          if (typeof onReplace === 'function') {
+            onReplace();
+          } else if (fileInputEl) {
+            fileInputEl.click();
+          }
+        });
+      }
+    }
+
+    hideBlurRejectedBanner() {
+      const existing = document.getElementById('eg-blur-banner');
+      if (existing) existing.remove();
+    }
+
     showAutoCorrectChip(fieldElement, correctValue, onApply) {
       if (!fieldElement || !correctValue) return;
 
       const parent = fieldElement.parentElement || fieldElement.closest('.form-group') || fieldElement;
       const existingChip = parent.querySelector('.eg-autocorrect-chip');
-      if (existingChip) existingChip.remove();
+      if (existingChip) {
+        if (existingChip.dataset.val === correctValue) return;
+        existingChip.remove();
+      }
 
       const chip = document.createElement('div');
       chip.className = 'eg-autocorrect-chip';
+      chip.dataset.val = correctValue;
       chip.innerHTML = `
         <span class="eg-chip-text">⚡ Document has: <strong>"${correctValue}"</strong></span>
         <button type="button" class="eg-chip-apply-btn">Auto-Fix</button>
