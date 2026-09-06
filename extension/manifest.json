@@ -31,6 +31,7 @@
         "modules/form-validator.js",
         "modules/file-validator.js",
         "modules/image-quality.js",
+        "modules/google-vision.js",
         "modules/ocr-engine.js",
         "modules/document-parser.js",
         "modules/matcher.js",

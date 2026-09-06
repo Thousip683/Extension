@@ -150,8 +150,31 @@ Cert No: AP123456`,
         return demoResult;
       }
 
-      // ── Step 2: Real Tesseract.js OCR ──
-      window.ErrorGuard.Logger.info('OcrEngine', `Starting real Tesseract.js OCR for: ${file.name} (${file.size} bytes)`);
+      // ── Step 2: High-Accuracy Google Gemini Vision AI ──
+      let googleApiKey = '';
+      if (window.ErrorGuard.Storage && window.ErrorGuard.Storage.getGoogleApiKey) {
+        googleApiKey = await window.ErrorGuard.Storage.getGoogleApiKey();
+      }
+
+      if (googleApiKey && window.ErrorGuard.GoogleVision) {
+        try {
+          window.ErrorGuard.Logger.info('OcrEngine', `Running Google Gemini Vision AI for: ${file.name} (${file.type || 'file'})`);
+          const aiResult = await window.ErrorGuard.GoogleVision.analyzeDocument(file, googleApiKey, onProgress);
+
+          console.log('%c================== [ErrorGuard] GEMINI VISION AI EXTRACTED DATA ==================', 'color: #10b981; font-weight: bold; font-size: 13px;');
+          console.log('Structured Fields:', aiResult.aiData);
+          console.log('Raw Transcript:', aiResult.text);
+          console.log('%c==================================================================================', 'color: #10b981; font-weight: bold;');
+
+          return aiResult;
+        } catch (geminiErr) {
+          window.ErrorGuard.Logger.warn('OcrEngine', 'Gemini Vision AI issue, falling back to local OCR', geminiErr);
+          onProgress(15, 'Gemini AI issue, switching to offline Tesseract OCR...');
+        }
+      }
+
+      // ── Step 3: Offline Tesseract.js OCR (Fallback) ──
+      window.ErrorGuard.Logger.info('OcrEngine', `Starting offline Tesseract.js OCR for: ${file.name} (${file.size} bytes)`);
 
       // Check if Tesseract is available
       if (typeof Tesseract === 'undefined') {

@@ -168,5 +168,60 @@ it('yields NOT READY TO SUBMIT when blocking issues are present', () => {
   assert.strictEqual(report.healthScore, 50); // 100 - 25*2
 });
 
+// 5. Google Gemini Vision AI & PDF Tests
+console.log('\n5. Google Gemini Vision AI & PDF Tests:');
+
+it('parses structured JSON returned by Google Gemini Vision from a PDF', () => {
+  const geminiAiData = {
+    name: 'Siva Kumar',
+    dob: '12/05/2005',
+    certificateNo: 'AP-SCHOLAR-9988',
+    docType: 'CASTE_CERTIFICATE',
+    authority: 'Government of Andhra Pradesh',
+    notes: 'Official high-resolution PDF certificate'
+  };
+
+  const parsed = DocumentParser.parse('Full PDF Text...', geminiAiData);
+  assert.strictEqual(parsed.isAi, true);
+  assert.strictEqual(parsed.name, 'Siva Kumar');
+  assert.strictEqual(parsed.dob, '12/05/2005');
+  assert.strictEqual(parsed.certificateNo, 'AP-SCHOLAR-9988');
+  assert.strictEqual(parsed.docType, 'CASTE_CERTIFICATE');
+});
+
+it('correctly matches Gemini AI extracted identity against form inputs', () => {
+  const geminiAiData = {
+    name: 'Siva Kumar',
+    dob: '12/05/2005',
+    certificateNo: 'AP123456'
+  };
+
+  const nameMatch = Matcher.compareNames('Siva Kumar', geminiAiData.name);
+  assert.strictEqual(nameMatch.match, true);
+  assert.strictEqual(nameMatch.decision, 'MATCH');
+
+  const dobMatch = Matcher.compareDob('2005-05-12', geminiAiData.dob);
+  assert.strictEqual(dobMatch.match, true);
+  assert.strictEqual(dobMatch.decision, 'MATCH');
+});
+
+it('flags identity mismatch when Gemini Vision extracts a different person from an uploaded Aadhaar PDF', () => {
+  const geminiAiData = {
+    name: 'Ramesh Babu',
+    dob: '01/01/1990',
+    certificateNo: '998877665544',
+    docType: 'AADHAAR'
+  };
+
+  const nameMatch = Matcher.compareNames('suva kumar', geminiAiData.name);
+  assert.strictEqual(nameMatch.match, false);
+  assert.strictEqual(nameMatch.decision, 'MISMATCH');
+
+  const dobMatch = Matcher.compareDob('2005-05-12', geminiAiData.dob);
+  assert.strictEqual(dobMatch.match, false);
+  assert.strictEqual(dobMatch.decision, 'MISMATCH');
+});
+
 console.log(`\nResults: ${passed} passed, ${failed} failed.\n`);
 if (failed > 0) process.exit(1);
+

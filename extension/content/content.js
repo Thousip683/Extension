@@ -118,7 +118,7 @@
     }
 
     // 4. Structured Document Parsing
-    extractedDocData = DocumentParser.parse(ocrResult.text);
+    extractedDocData = DocumentParser.parse(ocrResult.text, ocrResult.aiData);
     extractedDocData.ocrConfidence = ocrResult.confidence;
 
     // ── Log Full OCR and Parsed Output to Browser Console ──

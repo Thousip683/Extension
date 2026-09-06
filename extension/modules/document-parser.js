@@ -43,9 +43,26 @@
     /**
      * Parses OCR text into structured fields
      * @param {string} ocrText
+     * @param {Object} [aiData] - Optional structured data from Google Gemini Vision
      * @returns {{ name: string|null, dob: string|null, certificateNo: string|null, aadhaarNo: string|null, panNo: string|null, docType: string, lines: Array<string>, raw: string }}
      */
-    parse(ocrText) {
+    parse(ocrText, aiData = null) {
+      if (aiData && (aiData.name || aiData.dob || aiData.certificateNo)) {
+        return {
+          name: aiData.name || null,
+          dob: aiData.dob || null,
+          certificateNo: aiData.certificateNo || null,
+          aadhaarNo: aiData.docType === 'AADHAAR' ? aiData.certificateNo : null,
+          panNo: aiData.docType === 'PAN' ? aiData.certificateNo : null,
+          docType: aiData.docType || 'DOCUMENT',
+          authority: aiData.authority || null,
+          notes: aiData.notes || '',
+          lines: (ocrText || '').split('\n'),
+          raw: ocrText || '',
+          isAi: true
+        };
+      }
+
       if (!ocrText || typeof ocrText !== 'string') {
         return {
           name: null,

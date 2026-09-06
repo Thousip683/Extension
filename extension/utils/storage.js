@@ -48,6 +48,19 @@
           resolve();
         }
       });
+    },
+
+    // ─── Dedicated Google API Key Management ───
+    async getGoogleApiKey() {
+      return (await this.get('google_gemini_api_key')) || '';
+    },
+
+    async setGoogleApiKey(key) {
+      return await this.set('google_gemini_api_key', (key || '').trim());
+    },
+
+    async removeGoogleApiKey() {
+      return await this.remove('google_gemini_api_key');
     }
   };
 })();
