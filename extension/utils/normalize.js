@@ -53,6 +53,35 @@
     },
 
     /**
+     * Normalizes phone number: strips country code (+91, 0), spaces, dashes.
+     * Returns clean digits string.
+     */
+    phone(phoneStr) {
+      if (!phoneStr || typeof phoneStr !== 'string') return '';
+      let clean = phoneStr.trim().replace(/[\s\-()]/g, '');
+      if (clean.startsWith('+91')) clean = clean.slice(3);
+      else if (clean.startsWith('91') && clean.length === 12) clean = clean.slice(2);
+      else if (clean.startsWith('0') && clean.length === 11) clean = clean.slice(1);
+      return clean.replace(/\D/g, '');
+    },
+
+    /**
+     * Normalizes bank account number: removes spaces, dashes.
+     */
+    bankAccount(accStr) {
+      if (!accStr || typeof accStr !== 'string') return '';
+      return accStr.trim().replace(/[\s\-]/g, '');
+    },
+
+    /**
+     * Normalizes IFSC Code: uppercase, removes spaces and hyphens.
+     */
+    ifsc(ifscStr) {
+      if (!ifscStr || typeof ifscStr !== 'string') return '';
+      return ifscStr.trim().toUpperCase().replace(/[\s\-]/g, '');
+    },
+
+    /**
      * Normalizes alphanumeric IDs (Certificate numbers, Aadhaar, Application IDs)
      */
     identifier(id) {

@@ -76,6 +76,21 @@
       regex: /(declaration|declare|confirm|agree|terms|consent)/i,
       autocomplete: [],
       types: ['checkbox']
+    },
+    BANK_ACCOUNT: {
+      regex: /(bank[_\-\s]?account|acc[_\-\s]?(no|num|number)|account[_\-\s]?(no|num|number)|dbt[_\-\s]?bank)/i,
+      autocomplete: [],
+      types: ['text', 'number', 'tel']
+    },
+    IFSC_CODE: {
+      regex: /(ifsc[_\-\s]?(code)?|branch[_\-\s]?code)/i,
+      autocomplete: [],
+      types: ['text']
+    },
+    PINCODE: {
+      regex: /(pin[_\-\s]?code|postal[_\-\s]?code|^pincode$|^zip$)/i,
+      autocomplete: ['postal-code'],
+      types: ['text', 'number']
     }
   };
 

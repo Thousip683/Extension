@@ -88,7 +88,7 @@
       this.badgeEl.addEventListener('click', (e) => {
         if (e.target.closest('#egBadgeRefresh') || e.target.closest('#egBadgeCheckBtn')) return;
         if (!this.hasForm) {
-          this.toggleDrawer();
+          this.toggleStandbyPopover();
           return;
         }
         if (!this.userHasCheckedErrors) {
@@ -379,6 +379,64 @@
       }
     }
 
+    toggleStandbyPopover() {
+      const existing = document.getElementById('eg-standby-popover');
+      if (existing) {
+        this.hideStandbyPopover();
+      } else {
+        this.showStandbyPopover();
+      }
+    }
+
+    showStandbyPopover() {
+      this.hideStandbyPopover();
+      const popover = document.createElement('div');
+      popover.id = 'eg-standby-popover';
+      popover.className = 'eg-standby-popover';
+      popover.innerHTML = `
+        <div class="eg-standby-popover-header">
+          <div class="eg-standby-popover-title">
+            <span style="font-size: 1.3rem;">🛡️</span>
+            <div>
+              <strong>Error Guard: Standby Mode</strong>
+              <span class="eg-standby-pill">No Form on Page</span>
+            </div>
+          </div>
+          <button type="button" class="eg-banner-close" id="egCloseStandby" title="Close">✕</button>
+        </div>
+        <div class="eg-standby-popover-body">
+          <div class="eg-standby-hero-icon">📄🔍</div>
+          <h4 class="eg-standby-headline">No Application Form Detected</h4>
+          <p class="eg-standby-explanation">
+            Error Guard is running and actively listening in the background. When you open a webpage with an application, scholarship, or registration form, pre-submission audits and AI document assistance will activate automatically.
+          </p>
+          <div class="eg-standby-pills-row">
+            <div class="eg-standby-feature-badge">⚡ Real-Time Typo & Format Audits</div>
+            <div class="eg-standby-feature-badge">📑 Document Mismatch & Blurring Guard</div>
+            <div class="eg-standby-feature-badge">🤖 AI Auto-Fill & Cross-Verification</div>
+          </div>
+        </div>
+        <div class="eg-standby-popover-footer">
+          <button type="button" class="eg-btn eg-btn-primary" id="egOpenDemoPortalBtn" style="padding: 10px 14px; font-size: 0.84rem; font-weight: 700; border-radius: 8px; width: 100%; cursor: pointer;">
+            🏛️ Open Demo Portal to Test (localhost:3000)
+          </button>
+        </div>
+      `;
+
+      document.body.appendChild(popover);
+
+      document.getElementById('egCloseStandby')?.addEventListener('click', () => this.hideStandbyPopover());
+      document.getElementById('egOpenDemoPortalBtn')?.addEventListener('click', () => {
+        window.open('http://localhost:3000', '_blank');
+        this.hideStandbyPopover();
+      });
+    }
+
+    hideStandbyPopover() {
+      const existing = document.getElementById('eg-standby-popover');
+      if (existing) existing.remove();
+    }
+
     /**
      * Updates overlay states based on the latest validation report
      * @param {object} report - output of ErrorEngine.aggregate
@@ -401,7 +459,10 @@
         this.clearFieldHighlights();
         if (checkBtn) checkBtn.style.display = 'none';
         this.badgeEl.className = 'eg-floating-badge eg-standby';
-        if (badgeStatus) badgeStatus.textContent = 'Standby • No Form';
+        this.badgeEl.title = 'Error Guard is in Standby Mode (No application form detected on this page). Click for details.';
+        if (badgeStatus) {
+          badgeStatus.innerHTML = '<span class="eg-pulse-dot" style="background: #94a3b8; margin-right: 4px;"></span> Standby • No Form';
+        }
         if (drawerScore) {
           drawerScore.textContent = 'Status: Standby';
           drawerScore.className = 'eg-health-tag';
@@ -412,6 +473,8 @@
       }
 
       this.hasForm = true;
+      this.hideStandbyPopover();
+      this.badgeEl.title = '';
 
       const showAlerts = options.showAlerts !== undefined ? options.showAlerts : this.userHasCheckedErrors;
       this.userHasCheckedErrors = showAlerts;
@@ -613,8 +676,16 @@
               <span class="eg-pulse-dot"></span>
               Listening for form inputs...
             </div>
+            <div style="margin-top: 20px;">
+              <button type="button" class="eg-btn eg-btn-primary" id="egDrawerDemoPortalBtn" style="padding: 10px 16px; font-size: 0.88rem; border-radius: 8px; cursor: pointer; width: 100%; font-weight: 700;">
+                🏛️ Open Demo Portal to Test
+              </button>
+            </div>
           </div>
         `;
+        document.getElementById('egDrawerDemoPortalBtn')?.addEventListener('click', () => {
+          window.open('http://localhost:3000', '_blank');
+        });
         return;
       }
 

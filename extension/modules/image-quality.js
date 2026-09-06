@@ -105,6 +105,8 @@
               }
             }
 
+            const sharpnessScore = diffSum / (pixelCount / 4);
+
             // A typical document with text has sharpnessScore between 3.0 and 20.0
             // Only severely degraded, smoothed, or featureless images fall below 1.8
             if (sharpnessScore < 1.8) {

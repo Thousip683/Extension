@@ -217,16 +217,18 @@
                 1.1 Full Name of Applicant (As per Aadhaar Card / SSC Records) <span class="required">*</span>
               </label>
               <input type="text" id="fullName" name="full_name" placeholder="e.g. Siva Kumar" required
+                pattern="[A-Za-z\s\.]+" title="Alphabetic letters and spaces only (no numbers or symbols)"
                 autocomplete="name">
-              <span class="field-hint">Note: Spelling must match your uploaded Aadhaar card exactly.</span>
+              <span class="field-hint">Note: Spelling must match your uploaded Aadhaar card exactly (letters only).</span>
             </div>
 
             <div class="form-group">
               <label for="fatherName">
                 1.2 Father's / Guardian's Full Name <span class="required">*</span>
               </label>
-              <input type="text" id="fatherName" name="father_name" placeholder="e.g. Ramesh Kumar" required>
-              <span class="field-hint">As recorded on your SSC marks sheet or official certificates.</span>
+              <input type="text" id="fatherName" name="father_name" placeholder="e.g. Ramesh Kumar" required
+                pattern="[A-Za-z\s\.]+" title="Alphabetic letters and spaces only (no numbers or symbols)">
+              <span class="field-hint">As recorded on your SSC marks sheet or official certificates (letters only).</span>
             </div>
           </div>
 
@@ -275,9 +277,9 @@
               <label for="phone">
                 1.6 Aadhaar-Linked Mobile Number <span class="required">*</span>
               </label>
-              <input type="tel" id="phone" name="phone" placeholder="9876543210" pattern="[0-9]{10}" maxlength="10"
+              <input type="tel" id="phone" name="phone" placeholder="9876543210" pattern="[6-9][0-9]{9}" maxlength="10"
                 required autocomplete="tel">
-              <span class="field-hint">10-digit mobile number registered for Aadhaar OTP authentication.</span>
+              <span class="field-hint">10-digit mobile number starting with 6, 7, 8, or 9 for OTP authentication.</span>
             </div>
           </div>
 
@@ -295,8 +297,9 @@
               <label for="motherName">
                 1.8 Mother's Full Name <span class="optional-tag">(Optional)</span>
               </label>
-              <input type="text" id="motherName" name="mother_name" placeholder="e.g. Lakshmi Devi">
-              <span class="field-hint">As recorded on family ration card / educational records.</span>
+              <input type="text" id="motherName" name="mother_name" placeholder="e.g. Lakshmi Devi"
+                pattern="[A-Za-z\s\.]+" title="Alphabetic letters and spaces only (no numbers or symbols)">
+              <span class="field-hint">As recorded on family ration card / educational records (letters only).</span>
             </div>
           </div>
 
@@ -306,9 +309,9 @@
               <label for="alternatePhone">
                 1.9 Alternate Mobile Number <span class="optional-tag">(Optional)</span>
               </label>
-              <input type="tel" id="alternatePhone" name="alternate_phone" placeholder="9876501234" pattern="[0-9]{10}"
+              <input type="tel" id="alternatePhone" name="alternate_phone" placeholder="9876501234" pattern="[6-9][0-9]{9}"
                 maxlength="10">
-              <span class="field-hint">Backup contact number of parent / guardian.</span>
+              <span class="field-hint">Backup contact number of parent / guardian (starts with 6-9).</span>
             </div>
 
             <div class="form-group">
@@ -322,8 +325,17 @@
 
           <div class="form-grid">
             <div class="form-group">
+              <label for="pincode">
+                1.11 Permanent Residential PIN Code <span class="optional-tag">(Optional)</span>
+              </label>
+              <input type="text" id="pincode" name="pincode" placeholder="e.g. 520001" minlength="6" maxlength="6"
+                pattern="[1-9][0-9]{5}" title="6-digit Indian Postal PIN code (starts with 1-9)">
+              <span class="field-hint">6-digit postal code (starts with 1-9, e.g. 520001).</span>
+            </div>
+
+            <div class="form-group">
               <label for="pwdStatus">
-                1.11 Differently Abled / PwD Status <span class="optional-tag">(Optional)</span>
+                1.12 Differently Abled / PwD Status <span class="optional-tag">(Optional)</span>
               </label>
               <select id="pwdStatus" name="pwd_status">
                 <option value="No">No / Not Applicable</option>
@@ -383,17 +395,19 @@
                 2.3 DBT Bank Account Number <span class="optional-tag">(Optional)</span>
               </label>
               <input type="text" id="bankAccountNo" name="bank_account_no" placeholder="e.g. 123456789012"
-                maxlength="18">
-              <span class="field-hint">Aadhaar-seeded savings account for direct scholarship disbursement.</span>
+                minlength="9" maxlength="18" pattern="[0-9]{9,18}" title="Bank Account Number must be 9 to 18 digits"
+                autocomplete="off">
+              <span class="field-hint">9 to 18 numeric digits savings account for direct scholarship disbursement.</span>
             </div>
 
             <div class="form-group">
               <label for="ifscCode">
                 2.4 Bank Branch IFSC Code <span class="optional-tag">(Optional)</span>
               </label>
-              <input type="text" id="ifscCode" name="ifsc_code" placeholder="e.g. SBIN0001234" maxlength="11"
-                style="text-transform: uppercase;">
-              <span class="field-hint">11-character Indian Financial System Code (e.g. SBIN0001234).</span>
+              <input type="text" id="ifscCode" name="ifsc_code" placeholder="e.g. SBIN0001234" minlength="11" maxlength="11"
+                pattern="[A-Za-z]{4}0[A-Za-z0-9]{6}" title="11-character IFSC: 4 letters, digit 0, 6 branch characters"
+                style="text-transform: uppercase;" autocomplete="off">
+              <span class="field-hint">11 characters (e.g. SBIN0001234: 4 letters, digit '0', 6 branch characters).</span>
             </div>
           </div>
         </fieldset>
