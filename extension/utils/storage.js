@@ -7,10 +7,23 @@
   window.ErrorGuard = window.ErrorGuard || {};
 
   window.ErrorGuard.Storage = {
+    _isContextValid() {
+      try {
+        // Accessing chrome.runtime.id throws if the context is invalidated
+        return typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local && !!chrome.runtime.id;
+      } catch (e) {
+        return false;
+      }
+    },
+
     async set(key, value) {
       return new Promise((resolve) => {
-        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-          chrome.storage.local.set({ [key]: value }, resolve);
+        if (this._isContextValid()) {
+          try {
+            chrome.storage.local.set({ [key]: value }, resolve);
+          } catch (e) {
+            resolve(); // context invalidated mid-call
+          }
         } else {
           try {
             localStorage.setItem(key, JSON.stringify(value));
@@ -22,10 +35,14 @@
 
     async get(key) {
       return new Promise((resolve) => {
-        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-          chrome.storage.local.get([key], (result) => {
-            resolve(result ? result[key] : null);
-          });
+        if (this._isContextValid()) {
+          try {
+            chrome.storage.local.get([key], (result) => {
+              resolve(result ? result[key] : null);
+            });
+          } catch (e) {
+            resolve(null);
+          }
         } else {
           try {
             const val = localStorage.getItem(key);
@@ -39,8 +56,12 @@
 
     async remove(key) {
       return new Promise((resolve) => {
-        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-          chrome.storage.local.remove([key], resolve);
+        if (this._isContextValid()) {
+          try {
+            chrome.storage.local.remove([key], resolve);
+          } catch (e) {
+            resolve();
+          }
         } else {
           try {
             localStorage.removeItem(key);

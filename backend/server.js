@@ -40,7 +40,7 @@ function loadEnv() {
 loadEnv();
 
 const PORT = parseInt(process.env.PORT || '5000', 10);
-const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+
 
 function getApiKey() {
   return (process.env.GEMINI_API_KEY || '').trim();
@@ -74,6 +74,45 @@ Extract all details and return strictly valid JSON (no markdown formatting, no c
 }`;
 
 // ── 3. Call Gemini Vision API ──
+// Ordered list of models to try (newest first, fallback on failure)
+const GEMINI_MODELS = [
+  'gemini-2.5-flash',
+  'gemini-2.5-flash-lite',
+  'gemini-3.1-flash-lite',
+  'gemini-flash-latest'
+];
+
+async function callGeminiModel(modelName, payload, apiKey) {
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000); // 30s timeout
+
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: controller.signal
+    });
+
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      const msg = errData.error?.message || `HTTP ${response.status}`;
+      throw new Error(msg);
+    }
+
+    return await response.json();
+  } catch (e) {
+    clearTimeout(timeout);
+    if (e.name === 'AbortError') {
+      throw new Error(`Gemini model "${modelName}" timed out after 30 seconds`);
+    }
+    throw e;
+  }
+}
+
 async function analyzeWithGemini(base64Data, mimeType) {
   const apiKey = getApiKey();
   if (!apiKey) {
@@ -87,7 +126,7 @@ async function analyzeWithGemini(base64Data, mimeType) {
           { text: GEMINI_PROMPT },
           {
             inlineData: {
-              mimeType: mimeType || 'application/pdf',
+              mimeType: mimeType || 'image/jpeg',
               data: base64Data
             }
           }
@@ -95,36 +134,41 @@ async function analyzeWithGemini(base64Data, mimeType) {
       }
     ],
     generationConfig: {
-      temperature: 0.1,
-      responseMimeType: 'application/json'
+      temperature: 0.1
     }
   };
 
-  const response = await fetch(`${GEMINI_ENDPOINT}?key=${apiKey}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload)
-  });
+  let lastError = null;
+  for (const modelName of GEMINI_MODELS) {
+    try {
+      console.log(`[AI Backend] Trying model: ${modelName}...`);
+      const result = await callGeminiModel(modelName, payload, apiKey);
+      const textOutput = result.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+      const cleanJson = textOutput.replace(/```json/gi, '').replace(/```/g, '').trim();
 
-  if (!response.ok) {
-    const errData = await response.json().catch(() => ({}));
-    throw new Error(errData.error?.message || `Gemini API returned status ${response.status}`);
+      // Try to find JSON in the response
+      const jsonMatch = cleanJson.match(/\{[\s\S]*\}/);
+      const jsonStr = jsonMatch ? jsonMatch[0] : cleanJson;
+
+      console.log(`[AI Backend] ✅ Model ${modelName} succeeded`);
+      try {
+        return JSON.parse(jsonStr);
+      } catch (e) {
+        return {
+          document_type: 'UNKNOWN',
+          fields: {},
+          raw_text: textOutput,
+          confidence: 0.5
+        };
+      }
+    } catch (err) {
+      console.warn(`[AI Backend] ⚠️ Model ${modelName} failed: ${err.message}`);
+      lastError = err;
+      // Continue to next model
+    }
   }
 
-  const result = await response.json();
-  const textOutput = result.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
-  const cleanJson = textOutput.replace(/```json/gi, '').replace(/```/g, '').trim();
-
-  try {
-    return JSON.parse(cleanJson);
-  } catch (e) {
-    return {
-      document_type: 'UNKNOWN',
-      fields: {},
-      raw_text: textOutput,
-      confidence: 0.5
-    };
-  }
+  throw lastError || new Error('All Gemini models failed');
 }
 
 // ── 4. Create HTTP Server ──
