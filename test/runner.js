@@ -11,10 +11,11 @@ global.window = { ErrorGuard: {} };
 // Load modules
 require('../extension/utils/normalize.js');
 require('../extension/modules/matcher.js');
+require('../extension/modules/document-parser.js');
 require('../extension/modules/file-validator.js');
 require('../extension/modules/error-engine.js');
 
-const { Normalize, Matcher, FileValidator, ErrorEngine } = global.window.ErrorGuard;
+const { Normalize, Matcher, DocumentParser, FileValidator, ErrorEngine } = global.window.ErrorGuard;
 
 let passed = 0;
 let failed = 0;
@@ -51,8 +52,28 @@ it('normalizes alphanumeric certificate identifiers', () => {
   assert.strictEqual(Normalize.identifier('AP/123/456'), 'AP123456');
 });
 
-// 2. Fuzzy Matcher Tests
-console.log('\n2. Cross-Verification Matcher:');
+// 2. Document Parser Tests (Official Certs & Aadhaar IDs)
+console.log('\n2. Document Parser (Aadhaar, PAN, Certificates):');
+it('parses structured government certificates', () => {
+  const ocrSample = `GOVERNMENT OF ANDHRA PRADESH\nREVENUE DEPARTMENT\nFull Name: Siva Kumar\nDate of Birth: 12/05/2005\nCertificate Number: AP123456`;
+  const res = DocumentParser.parse(ocrSample);
+  assert.strictEqual(res.name, 'Siva Kumar');
+  assert.strictEqual(res.dob, '12/05/2005');
+  assert.strictEqual(res.certificateNo, 'AP123456');
+  assert.strictEqual(res.docType, 'CERTIFICATE');
+});
+
+it('parses Aadhaar card with unlabelled name and bilingual DOB', () => {
+  const aadhaarSample = `Government of India\nUnique Identification Authority of India\nRahul Sharma\nजन्म तारीख / DOB: 15/08/1998\nMale / पुरुष\n9876 5432 1098`;
+  const res = DocumentParser.parse(aadhaarSample);
+  assert.strictEqual(res.name, 'Rahul Sharma');
+  assert.strictEqual(res.dob, '15/08/1998');
+  assert.strictEqual(res.aadhaarNo, '9876 5432 1098');
+  assert.strictEqual(res.docType, 'AADHAAR');
+});
+
+// 3. Fuzzy Matcher Tests
+console.log('\n3. Cross-Verification Matcher:');
 it('identifies exact name matches', () => {
   const res = Matcher.compareNames('Siva Kumar', 'Siva Kumar');
   assert.strictEqual(res.match, true);
@@ -75,7 +96,6 @@ it('flags major name discrepancies as mismatch', () => {
 });
 
 it('matches equivalent DOB representations canonically', () => {
-  // Form has YYYY-MM-DD from date input, document has DD/MM/YYYY
   const res = Matcher.compareDob('2005-05-12', '12/05/2005');
   assert.strictEqual(res.match, true);
   assert.strictEqual(res.decision, 'MATCH');
@@ -87,8 +107,18 @@ it('detects mismatched dates of birth', () => {
   assert.strictEqual(res.decision, 'MISMATCH');
 });
 
-// 3. File Validator Tests
-console.log('\n3. File Validation Rules:');
+it('searches for applicant name across full document text', () => {
+  const docText = `Government of India\nUnique Identification Authority\nRahul Sharma\nDOB: 15/08/1998\n1234 5678 9012`;
+  const matchRes = Matcher.searchNameInDocument('Rahul Sharma', docText);
+  assert.strictEqual(matchRes.match, true);
+
+  const mismatchRes = Matcher.searchNameInDocument('Siva Kumar', docText);
+  assert.strictEqual(mismatchRes.match, false);
+  assert.strictEqual(mismatchRes.decision, 'MISMATCH');
+});
+
+// 4. File Validator Tests
+console.log('\n4. File Validation Rules:');
 it('flags files exceeding maximum allowed size', () => {
   const mockFile = { name: 'cert.png', size: 3000000, type: 'image/png' };
   const issues = FileValidator.validate(mockFile, { maxSizeBytes: 2097152 });
@@ -109,8 +139,8 @@ it('flags disallowed file types and extensions', () => {
   assert.strictEqual(issues[0].severity, 'BLOCKING');
 });
 
-// 4. Error Engine Aggregation Tests
-console.log('\n4. Error Engine & Readiness Calculation:');
+// 5. Error Engine Aggregation Tests
+console.log('\n5. Error Engine & Readiness Calculation:');
 it('yields READY TO SUBMIT when 0 blocking issues exist', () => {
   const report = ErrorEngine.aggregate({
     formIssues: [],

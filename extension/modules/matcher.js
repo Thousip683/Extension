@@ -161,6 +161,140 @@
         decision: match ? 'MATCH' : 'MISMATCH',
         reason: match ? 'Certificate number matches.' : `Identifier mismatch: ${id1} vs ${id2}`
       };
+    },
+
+    /**
+     * Searches for applicant name across the entire OCR text / line array
+     * @param {string} formName
+     * @param {string} rawText
+     * @param {Array<string>} [lines]
+     * @returns {{ match: boolean, decision: 'MATCH'|'REVIEW'|'MISMATCH', score: number, matchedLine: string|null, reason: string }}
+     */
+    searchNameInDocument(formName, rawText, lines = []) {
+      if (!formName) {
+        return { match: false, decision: 'MISMATCH', score: 0, matchedLine: null, reason: 'No form name provided.' };
+      }
+      if (!rawText || typeof rawText !== 'string' || rawText.trim().length === 0) {
+        return { match: false, decision: 'MISMATCH', score: 0, matchedLine: null, reason: 'No readable text in document.' };
+      }
+
+      const normFormName = window.ErrorGuard.Normalize.text(formName);
+      const normRaw = window.ErrorGuard.Normalize.text(rawText);
+
+      // 1. Direct Substring Match in Normalized Text
+      if (normRaw.includes(normFormName)) {
+        return {
+          match: true,
+          decision: 'MATCH',
+          score: 1.0,
+          matchedLine: formName,
+          reason: 'Applicant name found in document.'
+        };
+      }
+
+      // 2. Token / Words containment check (e.g. "Siva Kumar" in "Siva Kumar Reddy" or "Kumar Siva")
+      const formTokens = normFormName.split(' ').filter(t => t.length > 1);
+      if (formTokens.length > 1) {
+        const allTokensFound = formTokens.every(tok => normRaw.includes(tok));
+        if (allTokensFound) {
+          return {
+            match: true,
+            decision: 'MATCH',
+            score: 0.95,
+            matchedLine: formName,
+            reason: 'Applicant name components found in document.'
+          };
+        }
+      }
+
+      // 3. Scan each line for highest similarity
+      const candidateLines = lines.length > 0 ? lines : rawText.split('\n');
+      let bestScore = 0;
+      let bestLine = null;
+
+      for (const line of candidateLines) {
+        const normLine = window.ErrorGuard.Normalize.text(line);
+        if (!normLine || normLine.length < 3) continue;
+
+        // Check exact match in line
+        if (normLine.includes(normFormName)) {
+          return { match: true, decision: 'MATCH', score: 1.0, matchedLine: line.trim(), reason: 'Applicant name found in document.' };
+        }
+
+        const sim = calculateSimilarity(normFormName, normLine);
+        if (sim > bestScore) {
+          bestScore = sim;
+          bestLine = line.trim();
+        }
+
+        // Also check similarity against token combinations in longer lines
+        const lineTokens = normLine.split(' ');
+        if (lineTokens.length >= formTokens.length) {
+          for (let i = 0; i <= lineTokens.length - formTokens.length; i++) {
+            const windowPhrase = lineTokens.slice(i, i + formTokens.length).join(' ');
+            const windowSim = calculateSimilarity(normFormName, windowPhrase);
+            if (windowSim > bestScore) {
+              bestScore = windowSim;
+              bestLine = windowPhrase;
+            }
+          }
+        }
+      }
+
+      if (bestScore >= 0.88) {
+        return {
+          match: false,
+          decision: 'REVIEW',
+          score: Math.round(bestScore * 100) / 100,
+          matchedLine: bestLine,
+          reason: `Possible name spelling difference (Similarity: ${Math.round(bestScore * 100)}% with "${bestLine}").`
+        };
+      }
+
+      return {
+        match: false,
+        decision: 'MISMATCH',
+        score: Math.round(bestScore * 100) / 100,
+        matchedLine: bestLine,
+        reason: `Applicant name "${formName}" was not found on the uploaded document.`
+      };
+    },
+
+    /**
+     * Searches for DOB across the entire OCR text
+     * @param {string} formDob
+     * @param {string} rawText
+     * @returns {{ match: boolean, decision: 'MATCH'|'MISMATCH', reason: string }}
+     */
+    searchDobInDocument(formDob, rawText) {
+      if (!formDob || !rawText) {
+        return { match: false, decision: 'MISMATCH', reason: 'DOB or document text missing.' };
+      }
+
+      const formIso = window.ErrorGuard.Normalize.date(formDob);
+      if (!formIso) {
+        return { match: false, decision: 'MISMATCH', reason: 'Form DOB could not be parsed.' };
+      }
+
+      const [y, m, d] = formIso.split('-');
+      const dmySlash = `${parseInt(d, 10)}/${parseInt(m, 10)}/${y}`;
+      const dmySlashPad = `${d}/${m}/${y}`;
+      const dmyDash = `${d}-${m}-${y}`;
+
+      if (
+        rawText.includes(formIso) ||
+        rawText.includes(dmySlash) ||
+        rawText.includes(dmySlashPad) ||
+        rawText.includes(dmyDash)
+      ) {
+        return { match: true, decision: 'MATCH', reason: 'Date of birth matches document.' };
+      }
+
+      return {
+        match: false,
+        decision: 'MISMATCH',
+        reason: `Form DOB (${window.ErrorGuard.Normalize.formatDateDisplay(formIso)}) was not found on the uploaded document.`
+      };
     }
   };
 })();

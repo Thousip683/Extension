@@ -120,15 +120,30 @@
     // 4. Structured Document Parsing
     extractedDocData = DocumentParser.parse(ocrResult.text);
     extractedDocData.ocrConfidence = ocrResult.confidence;
-    Logger.info('ContentScript', 'Extracted document data', {
-      hasName: !!extractedDocData.name,
-      hasDob: !!extractedDocData.dob,
-      hasCertNo: !!extractedDocData.certificateNo
+
+    // ── Log Full OCR and Parsed Output to Browser Console ──
+    console.log('================== [ErrorGuard OCR] RAW TEXT START ==================');
+    console.log(ocrResult.text || '(No text extracted)');
+    console.log('================== [ErrorGuard OCR] RAW TEXT END ====================');
+    console.log('[ErrorGuard] Parsed Document Structure:', extractedDocData);
+
+    Logger.info('ContentScript', 'Extracted document data summary:', {
+      detectedName: extractedDocData.name || '(none)',
+      detectedDob: extractedDocData.dob || '(none)',
+      detectedAadhaar: extractedDocData.aadhaarNo || '(none)',
+      detectedCertNo: extractedDocData.certificateNo || '(none)',
+      docType: extractedDocData.docType
     });
 
     // 5. Re-run complete evaluation with newly extracted document data
     await runEvaluation(fileIssues, qualityIssues);
   }
+
+  // Expose global re-evaluation trigger for manual refresh
+  window.ErrorGuard.reEvaluate = async function() {
+    Logger.info('ContentScript', 'Manual re-scan triggered by user.');
+    return await runEvaluation();
+  };
 
   async function runEvaluation(cachedFileIssues = null, cachedQualityIssues = null) {
     const scanResult = Detector.scan();
@@ -169,55 +184,130 @@
     const crossCheckIssues = [];
     if (currentFile && extractedDocData) {
       const crossChecks = RuleEngine.getCrossChecks();
+      const rawText = extractedDocData.raw || '';
+      const hasRecognizedText = rawText.trim().length >= 10;
 
       // Check A: Full Name Cross Check
-      if (crossChecks.verifyName && formData.full_name && extractedDocData.name) {
-        const nameComparison = Matcher.compareNames(formData.full_name, extractedDocData.name);
-        if (!nameComparison.match) {
-          const isReview = nameComparison.decision === 'REVIEW';
-          crossCheckIssues.push({
-            code: 'NAME_MISMATCH',
-            field: 'FULL_NAME',
-            severity: isReview ? 'WARNING' : 'BLOCKING',
-            message: isReview
-              ? `Possible name spelling difference: Form says "${formData.full_name}", document says "${extractedDocData.name}".`
-              : `Name mismatch: Form specifies "${formData.full_name}", but certificate shows "${extractedDocData.name}".`,
-            formValue: formData.full_name,
-            documentValue: extractedDocData.name,
-            score: nameComparison.score,
-            fix: 'Ensure your entered name matches the spelling on your certificate exactly.'
-          });
+      if (crossChecks.verifyName && formData.full_name) {
+        if (extractedDocData.name) {
+          const nameComparison = Matcher.compareNames(formData.full_name, extractedDocData.name);
+          if (!nameComparison.match) {
+            // Also check if form name is elsewhere in document before flagging
+            const fullTextSearch = Matcher.searchNameInDocument(formData.full_name, rawText, extractedDocData.lines);
+            if (!fullTextSearch.match) {
+              const isReview = nameComparison.decision === 'REVIEW' || fullTextSearch.decision === 'REVIEW';
+              crossCheckIssues.push({
+                code: 'NAME_MISMATCH',
+                field: 'FULL_NAME',
+                severity: isReview ? 'WARNING' : 'BLOCKING',
+                message: isReview
+                  ? `Possible name spelling difference: Form says "${formData.full_name}", document shows "${extractedDocData.name}".`
+                  : `Name mismatch: Form specifies "${formData.full_name}", but certificate/ID shows "${extractedDocData.name}".`,
+                formValue: formData.full_name,
+                documentValue: extractedDocData.name,
+                score: nameComparison.score || fullTextSearch.score,
+                fix: 'Ensure your entered name matches the spelling on your certificate or ID card exactly.'
+              });
+            }
+          }
+        } else if (hasRecognizedText) {
+          // No explicit name field detected, search full text
+          const fullTextSearch = Matcher.searchNameInDocument(formData.full_name, rawText, extractedDocData.lines);
+          if (!fullTextSearch.match) {
+            const isReview = fullTextSearch.decision === 'REVIEW';
+            crossCheckIssues.push({
+              code: 'NAME_MISMATCH',
+              field: 'FULL_NAME',
+              severity: isReview ? 'WARNING' : 'BLOCKING',
+              message: isReview
+                ? `Possible name spelling difference: Form says "${formData.full_name}", nearest document text says "${fullTextSearch.matchedLine || ''}".`
+                : `Name mismatch: Applicant name "${formData.full_name}" was not found on the uploaded document.`,
+              formValue: formData.full_name,
+              documentValue: fullTextSearch.matchedLine || null,
+              score: fullTextSearch.score,
+              fix: 'Upload the document belonging to the applicant or correct the name in the form.'
+            });
+          }
         }
       }
 
       // Check B: Date of Birth Cross Check
-      if (crossChecks.verifyDob && formData.dob && extractedDocData.dob) {
-        const dobComparison = Matcher.compareDob(formData.dob, extractedDocData.dob);
-        if (!dobComparison.match) {
-          crossCheckIssues.push({
-            code: 'DOB_MISMATCH',
-            field: 'DOB',
-            severity: 'BLOCKING',
-            message: dobComparison.reason,
-            formValue: formData.dob,
-            documentValue: extractedDocData.dob,
-            fix: 'Check the date of birth on your original certificate and correct the form.'
-          });
+      if (crossChecks.verifyDob && formData.dob) {
+        if (extractedDocData.dob) {
+          const dobComparison = Matcher.compareDob(formData.dob, extractedDocData.dob);
+          if (!dobComparison.match) {
+            // Check if form DOB is elsewhere in raw text
+            const dobSearch = Matcher.searchDobInDocument(formData.dob, rawText);
+            if (!dobSearch.match) {
+              crossCheckIssues.push({
+                code: 'DOB_MISMATCH',
+                field: 'DOB',
+                severity: 'BLOCKING',
+                message: dobComparison.reason,
+                formValue: formData.dob,
+                documentValue: extractedDocData.dob,
+                fix: 'Check the date of birth on your original certificate/ID card and correct the form.'
+              });
+            }
+          }
+        } else if (hasRecognizedText) {
+          const dobSearch = Matcher.searchDobInDocument(formData.dob, rawText);
+          if (!dobSearch.match) {
+            crossCheckIssues.push({
+              code: 'DOB_MISMATCH',
+              field: 'DOB',
+              severity: 'BLOCKING',
+              message: dobSearch.reason,
+              formValue: formData.dob,
+              documentValue: null,
+              fix: 'Verify the date of birth on the uploaded document.'
+            });
+          }
         }
       }
 
-      // Check C: Certificate Number Cross Check
-      if (crossChecks.verifyCertificateNo && formData.certificate_no && extractedDocData.certificateNo) {
-        const certComp = Matcher.compareIdentifier(formData.certificate_no, extractedDocData.certificateNo);
-        if (!certComp.match) {
-          crossCheckIssues.push({
-            code: 'IDENTIFIER_MISMATCH',
-            field: 'CERTIFICATE_NUMBER',
-            severity: 'BLOCKING',
-            message: `Certificate number mismatch: Form has "${formData.certificate_no}", document shows "${extractedDocData.certificateNo}".`,
-            fix: 'Double check the certificate number on the document.'
-          });
+      // Check C: Certificate / ID Number Cross Check
+      if (crossChecks.verifyCertificateNo && formData.certificate_no) {
+        const docId = extractedDocData.certificateNo || extractedDocData.aadhaarNo || extractedDocData.panNo;
+        if (docId) {
+          const certComp = Matcher.compareIdentifier(formData.certificate_no, docId);
+          if (!certComp.match) {
+            // Check if normalized ID exists in full text
+            const normFormId = Normalize.identifier(formData.certificate_no);
+            const normRaw = Normalize.identifier(rawText);
+            if (!normRaw.includes(normFormId)) {
+              crossCheckIssues.push({
+                code: 'IDENTIFIER_MISMATCH',
+                field: 'CERTIFICATE_NUMBER',
+                severity: 'BLOCKING',
+                message: `Identifier mismatch: Form has "${formData.certificate_no}", document shows "${docId}".`,
+                fix: 'Double check the certificate or ID number on the document.'
+              });
+            }
+          }
+        } else if (hasRecognizedText) {
+          const normFormId = Normalize.identifier(formData.certificate_no);
+          const normRaw = Normalize.identifier(rawText);
+          if (!normRaw.includes(normFormId)) {
+            crossCheckIssues.push({
+              code: 'IDENTIFIER_MISMATCH',
+              field: 'CERTIFICATE_NUMBER',
+              severity: 'BLOCKING',
+              message: `Certificate/ID number "${formData.certificate_no}" was not found on the uploaded document.`,
+              fix: 'Double check the document number entered in the form.'
+            });
+          }
         }
+      }
+
+      // Check D: Unreadable Document Check
+      if (currentFile.type && currentFile.type.startsWith('image/') && rawText.trim().length < 5) {
+        qualityIssues.push({
+          code: 'DOCUMENT_LOW_QUALITY',
+          severity: 'WARNING',
+          message: 'Could not extract text clearly from this document. Please ensure the scan is clear, well-lit, and in focus.',
+          fix: 'Upload a clearer or higher-resolution scan of your official document.'
+        });
       }
     }
 

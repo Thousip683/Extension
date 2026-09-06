@@ -31,13 +31,31 @@
             <span class="eg-badge-title">Error Guard</span>
             <span class="eg-badge-status" id="egBadgeStatus">Scanning Form...</span>
           </div>
+          <button type="button" class="eg-badge-refresh-btn" id="egBadgeRefresh" title="Re-scan and Refresh Verification">🔄</button>
         </div>
       `;
       document.body.appendChild(this.badgeEl);
 
-      this.badgeEl.addEventListener('click', () => {
+      this.badgeEl.addEventListener('click', (e) => {
+        if (e.target.closest('#egBadgeRefresh')) return;
         this.toggleDrawer();
       });
+
+      const handleRefreshClick = async (e) => {
+        e.stopPropagation();
+        const btn = e.currentTarget;
+        btn.classList.add('eg-spinning');
+        const badgeStatus = document.getElementById('egBadgeStatus');
+        if (badgeStatus) badgeStatus.textContent = 'Refreshing...';
+        if (window.ErrorGuard && window.ErrorGuard.reEvaluate) {
+          await window.ErrorGuard.reEvaluate();
+        }
+        setTimeout(() => {
+          btn.classList.remove('eg-spinning');
+        }, 400);
+      };
+
+      document.getElementById('egBadgeRefresh').addEventListener('click', handleRefreshClick);
 
       // 2. Slide-out Quick Drawer
       this.drawerEl = document.createElement('div');
@@ -49,13 +67,18 @@
             <span>🛡️ Pre-Submission Error Guard</span>
             <span class="eg-health-tag" id="egDrawerScore">Health: --%</span>
           </div>
-          <button type="button" class="eg-drawer-close" id="egDrawerClose">✕</button>
+          <div class="eg-drawer-header-actions">
+            <button type="button" class="eg-drawer-refresh-btn" id="egDrawerRefresh" title="Re-scan Form">🔄 Refresh</button>
+            <button type="button" class="eg-drawer-close" id="egDrawerClose">✕</button>
+          </div>
         </div>
         <div class="eg-drawer-body" id="egDrawerBody">
           <!-- Populated dynamically -->
         </div>
       `;
       document.body.appendChild(this.drawerEl);
+
+      document.getElementById('egDrawerRefresh').addEventListener('click', handleRefreshClick);
 
       document.getElementById('egDrawerClose').addEventListener('click', () => {
         this.closeDrawer();

@@ -173,11 +173,12 @@ Cert No: AP123456`,
         if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL) {
           workerOptions.workerPath = chrome.runtime.getURL('lib/worker.min.js');
           workerOptions.corePath = chrome.runtime.getURL('lib/tesseract-core-simd-lstm.wasm.js');
-          // Language data from CDN (too large to bundle, ~15MB for eng)
-          workerOptions.langPath = 'https://tessdata.projectnaptha.com/4.0.0';
         }
+        // Language data from CDN or fast mirror
+        workerOptions.langPath = 'https://tessdata.projectnaptha.com/4.0.0';
 
-        const worker = await Tesseract.createWorker('eng', Tesseract.OEM.LSTM_ONLY, {
+        const oem = (Tesseract.OEM && Tesseract.OEM.LSTM_ONLY !== undefined) ? Tesseract.OEM.LSTM_ONLY : 1;
+        const worker = await Tesseract.createWorker('eng', oem, {
           ...workerOptions,
           logger: (m) => {
             if (m.status === 'recognizing text' && typeof m.progress === 'number') {
@@ -203,6 +204,10 @@ Cert No: AP123456`,
         await worker.terminate();
 
         onProgress(100, 'OCR Complete');
+
+        console.log('%c================== [ErrorGuard] RAW OCR EXTRACTED TEXT ==================', 'color: #38bdf8; font-weight: bold; font-size: 13px;');
+        console.log(text);
+        console.log('%c=========================================================================', 'color: #38bdf8; font-weight: bold;');
 
         window.ErrorGuard.Logger.info('OcrEngine', `Real OCR completed. Confidence: ${Math.round(confidence * 100)}%, Text length: ${text.length} chars`);
 
