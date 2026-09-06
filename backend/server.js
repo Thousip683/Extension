@@ -47,37 +47,44 @@ function getApiKey() {
 }
 
 // ── 2. Specialized Gemini Vision Prompt for Unlabelled Indian IDs & Certificates ──
-const GEMINI_PROMPT = `You are an expert AI document inspector specializing in Indian government identification cards, academic transcripts, and official certificates.
+const GEMINI_PROMPT = `You are an expert AI document inspector specializing in Indian government identification cards, academic transcripts, and official certificates.\n\nAnalyze this uploaded document image or PDF carefully.\nNote that many Indian documents DO NOT have explicit labels:\n- On Aadhaar cards: The applicant name is typically printed directly above the Date of Birth and below \"Government of India\" / regional language script without a \"Name:\" prefix. The Aadhaar number is a 12-digit number (XXXX XXXX XXXX).\n- On PAN cards: The applicant name is printed directly below \"Permanent Account Number Card\", with Father's name on line 2, DOB on line 3, and a 10-character alphanumeric PAN (e.g. ABCDE1234F).\n- On Caste/Income/Residence Certificates: \"This is to certify that Sri/Kumari [Name]...\" with an issuing certificate number (e.g. AP123456, W/O, S/O).\n- On Academic Marks Memos: Candidate name is in a header block or table alongside Hall Ticket/Registration Number.\n\nExtract all details and return strictly valid JSON (no markdown formatting, no code blocks):\n{\n  \"document_type\": \"AADHAAR | PAN | CASTE_CERTIFICATE | INCOME_CERTIFICATE | MARKSHEET | OTHER\",\n  \"fields\": {\n    \"full_name\": \"Applicant Full Name\",\n    \"dob\": \"DD/MM/YYYY or YYYY-MM-DD\",\n    \"certificate_no\": \"Aadhaar, PAN, or Certificate Registration Number\",\n    \"gender\": \"Male | Female | Other | null\",\n    \"father_name\": \"Father / Husband Name if present, else null\",\n    \"issuing_authority\": \"Issuing Authority or Board\"\n  },\n  \"confidence\": 0.98,\n  \"clarity\": \"HIGH | MEDIUM | LOW\",\n  \"notes\": \"Brief notes on document authenticity and layout\",\n  \"raw_text\": \"Complete transcript of visible text\"\n}`;
 
-Analyze this uploaded document image or PDF carefully.
-Note that many Indian documents DO NOT have explicit labels:
-- On Aadhaar cards: The applicant name is typically printed directly above the Date of Birth and below "Government of India" / regional language script without a "Name:" prefix. The Aadhaar number is a 12-digit number (XXXX XXXX XXXX).
-- On PAN cards: The applicant name is printed directly below "Permanent Account Number Card", with Father's name on line 2, DOB on line 3, and a 10-character alphanumeric PAN (e.g. ABCDE1234F).
-- On Caste/Income/Residence Certificates: "This is to certify that Sri/Kumari [Name]..." with an issuing certificate number (e.g. AP123456, W/O, S/O).
-- On Academic Marks Memos: Candidate name is in a header block or table alongside Hall Ticket/Registration Number.
+// ── Form-Aware Field Mapping Prompt ──
+// Used by /api/map-form-fields — receives both the document and the form schema
+function buildFormMappingPrompt(formSchema) {
+  return `You are an AI assistant helping auto-fill a government web form from an uploaded identity document.
 
-Extract all details and return strictly valid JSON (no markdown formatting, no code blocks):
+Here is the web form's field schema (JSON array). Each entry describes one form field:
+${JSON.stringify(formSchema, null, 2)}
+
+Your task:
+1. Analyze the uploaded document (image or PDF).
+2. Extract all readable information from the document.
+3. Map the extracted values to the correct form fields based on the field's label, id, name, and type.
+4. Return ONLY a JSON object where each key is the field's "fieldKey" (from the schema) and the value is what should be filled in.
+5. Set a field's value to null if the document does not contain information for that field.
+6. For date fields (type="date"), always return the value in YYYY-MM-DD format.
+7. For Aadhaar number fields, format as "XXXX XXXX XXXX".
+8. For PAN number fields, use uppercase (e.g. ABCDE1234F).
+9. Never fill a field labeled "father" or "guardian" with the applicant's own name.
+10. Never put an Aadhaar/PAN number into a caste/income certificate number field.
+
+IMPORTANT: Return ONLY valid JSON — no markdown, no explanation, no code blocks.
+Example output format:
 {
-  "document_type": "AADHAAR | PAN | CASTE_CERTIFICATE | INCOME_CERTIFICATE | MARKSHEET | OTHER",
-  "fields": {
-    "full_name": "Applicant Full Name",
-    "dob": "DD/MM/YYYY or YYYY-MM-DD",
-    "certificate_no": "Aadhaar, PAN, or Certificate Registration Number",
-    "gender": "Male | Female | Other | null",
-    "father_name": "Father / Husband Name if present, else null",
-    "issuing_authority": "Issuing Authority or Board"
-  },
-  "confidence": 0.98,
-  "clarity": "HIGH | MEDIUM | LOW",
-  "notes": "Brief notes on document authenticity and layout",
-  "raw_text": "Complete transcript of visible text"
+  "fullName": "Siva Kumar",
+  "dob": "2005-05-12",
+  "aadhaarNumber": "1234 5678 9012",
+  "fatherName": null,
+  "certificateNo": null
 }`;
+}
 
 // ── 3. Call Gemini Vision API ──
 // Ordered list of models to try (newest first, fallback on failure)
 const GEMINI_MODELS = [
-  'gemini-2.5-flash',
-  'gemini-2.5-flash-lite',
+  'gemini-3.6-flash',
+  'gemini-3.5-flash-lite',
   'gemini-3.1-flash-lite',
   'gemini-flash-latest'
 ];
@@ -235,6 +242,81 @@ const server = http.createServer(async (req, res) => {
           success: false,
           error: err.message
         }));
+      }
+    });
+    return;
+  }
+
+  // ── Form-Aware AI Field Mapping Endpoint ──
+  // Receives: { fileData (base64), mimeType, fileName, formSchema (array) }
+  // Returns:  { success: true, fieldMap: { fieldKey: value, ... } }
+  if (req.method === 'POST' && url.pathname === '/api/map-form-fields') {
+    let body = '';
+    req.on('data', chunk => { body += chunk.toString(); });
+
+    req.on('end', async () => {
+      try {
+        const payload = JSON.parse(body);
+        const { fileData, mimeType, fileName, formSchema } = payload;
+
+        if (!fileData) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'fileData (base64) is required.' }));
+          return;
+        }
+        if (!formSchema || !Array.isArray(formSchema) || formSchema.length === 0) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'formSchema (array) is required.' }));
+          return;
+        }
+
+        const apiKey = getApiKey();
+        if (!apiKey) {
+          res.writeHead(503, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'GEMINI_API_KEY not configured.' }));
+          return;
+        }
+
+        console.log(`[AI Backend] Form-mapping request: ${fileName || 'unnamed'} | ${formSchema.length} fields`);
+
+        const prompt = buildFormMappingPrompt(formSchema);
+        const geminiPayload = {
+          contents: [{
+            parts: [
+              { text: prompt },
+              { inlineData: { mimeType: mimeType || 'image/jpeg', data: fileData } }
+            ]
+          }],
+          generationConfig: { temperature: 0.1 }
+        };
+
+        let fieldMap = null;
+        let lastError = null;
+        for (const modelName of GEMINI_MODELS) {
+          try {
+            console.log(`[AI Backend] Form-mapping via model: ${modelName}...`);
+            const result = await callGeminiModel(modelName, geminiPayload, apiKey);
+            const rawText = result.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+            const cleaned = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
+            const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+            fieldMap = JSON.parse(jsonMatch ? jsonMatch[0] : cleaned);
+            console.log(`[AI Backend] ✅ Form-mapping succeeded via ${modelName}:`, fieldMap);
+            break;
+          } catch (err) {
+            console.warn(`[AI Backend] ⚠️ Form-mapping model ${modelName} failed: ${err.message}`);
+            lastError = err;
+          }
+        }
+
+        if (!fieldMap) throw lastError || new Error('All Gemini models failed for form mapping');
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, fieldMap }));
+
+      } catch (err) {
+        console.error('[AI Backend Form-Mapping Error]', err.message);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: false, error: err.message }));
       }
     });
     return;

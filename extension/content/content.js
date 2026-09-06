@@ -86,8 +86,8 @@
       if (target.files && target.files[0]) {
         currentFile = target.files[0];
         Logger.info('ContentScript', `File selected: ${target.files[0].name} (${target.files[0].size} bytes)`);
-        // AI document analysis starts immediately in the background
-        await processUploadedFile(currentFile);
+        // Pass the file input element so we can scrape the correct parent form
+        await processUploadedFile(currentFile, target);
       } else {
         currentFile = null;
         extractedDocData = null;
@@ -98,7 +98,84 @@
     }
   }
 
-  async function processUploadedFile(file) {
+  /**
+   * Scrapes the form that contains the given file input element.
+   * Falls back to the largest form on the page if no parent form is found.
+   * Returns a JSON array of field descriptors for Gemini to map against.
+   */
+  function scrapeTargetForm(fileInputEl) {
+    // Strategy 1: walk up to the closest <form> from the file input
+    let formEl = fileInputEl ? fileInputEl.closest('form') : null;
+
+    // Strategy 2: pick the form with the most fillable fields
+    if (!formEl) {
+      const allForms = Array.from(document.querySelectorAll('form'));
+      if (allForms.length === 1) {
+        formEl = allForms[0];
+      } else if (allForms.length > 1) {
+        formEl = allForms.reduce((best, f) => {
+          const count = f.querySelectorAll('input:not([type=hidden]):not([type=submit]):not([type=button]), select, textarea').length;
+          const bestCount = best ? best.querySelectorAll('input:not([type=hidden]):not([type=submit]):not([type=button]), select, textarea').length : 0;
+          return count > bestCount ? f : best;
+        }, null);
+      }
+    }
+
+    // Strategy 3: scan entire document if still nothing found
+    const container = formEl || document.body;
+    const inputs = container.querySelectorAll(
+      'input:not([type=hidden]):not([type=submit]):not([type=button]):not([type=reset]):not([type=image]),' +
+      'select, textarea'
+    );
+
+    const fields = [];
+    let posIndex = 0;
+
+    for (const el of inputs) {
+      // Skip file inputs themselves (no text value to fill)
+      if (el.type === 'file') continue;
+      // Skip checkboxes/radios for now (handled separately by existing validator)
+      if (el.type === 'checkbox' || el.type === 'radio') continue;
+
+      // Derive a stable fieldKey: prefer id, then name, then positional fallback
+      const fieldKey = el.id || el.name || `field_${posIndex++}`;
+
+      // Find the associated label text
+      let label = '';
+      if (el.id) {
+        const labelEl = document.querySelector(`label[for="${el.id}"]`);
+        if (labelEl) label = labelEl.innerText.replace(/\*/g, '').trim();
+      }
+      if (!label) {
+        // Look for a label wrapping or immediately preceding the input
+        const parentLabel = el.closest('label');
+        if (parentLabel) label = parentLabel.innerText.replace(/\*/g, '').trim();
+      }
+      if (!label) {
+        // Check nearest sibling/parent label within a form-group div
+        const group = el.closest('div, li, td, .form-group, .field');
+        if (group) {
+          const siblingLabel = group.querySelector('label');
+          if (siblingLabel) label = siblingLabel.innerText.replace(/\*/g, '').trim();
+        }
+      }
+
+      fields.push({
+        fieldKey,
+        id: el.id || null,
+        name: el.name || null,
+        type: el.type || el.tagName.toLowerCase(),
+        label: label || el.placeholder || fieldKey,
+        placeholder: el.placeholder || null,
+        currentValue: el.value || null
+      });
+    }
+
+    Logger.info('ContentScript', `Form scraped: ${fields.length} fillable fields found`, fields.map(f => f.fieldKey));
+    return fields;
+  }
+
+  async function processUploadedFile(file, fileInputEl) {
     const fileRules = RuleEngine.getFileRules();
 
     // 1. Fast File Validation (Size, MIME, Extension)
@@ -107,54 +184,146 @@
     // 2. Image Quality & Blur Checks (Canvas API)
     const qualityIssues = await ImageQuality.analyze(file, fileRules);
 
-    // 3. Asynchronous OCR & Background AI Vision Pipeline
+    // 3. Scrape the target form schema for AI-driven field mapping
+    const formSchema = scrapeTargetForm(fileInputEl);
+    console.log('[ErrorGuard] Form schema scraped for AI mapping:', formSchema);
+
+    // 4. Asynchronous OCR & AI Pipeline
     Overlay.setAiProgress(10, 'Analyzing document in background...');
     let ocrResult = { text: '', confidence: 0 };
+    let aiFieldMap = null; // Direct { fieldKey: value } map from Gemini
+
     try {
-      ocrResult = await OcrEngine.extractText(file, (percent, msg) => {
-        Overlay.setAiProgress(percent, msg);
-      });
-    } catch (err) {
-      Logger.warn('ContentScript', 'OCR extraction issue', err);
+      // ── Try the new form-aware AI mapping endpoint first ──
+      let backendUrl = 'http://localhost:5001';
+      let healthCheck = await fetch(`${backendUrl}/api/health`).catch(() => null);
+      if (!healthCheck || !healthCheck.ok) {
+        backendUrl = 'http://localhost:5000';
+        healthCheck = await fetch(`${backendUrl}/api/health`).catch(() => null);
+      }
+
+      if (healthCheck && healthCheck.ok && formSchema.length > 0) {
+        Overlay.setAiProgress(20, 'Reading form fields & document together...');
+        const base64Data = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result.split(',')[1]);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+
+        Overlay.setAiProgress(45, 'Gemini AI mapping document to form fields...');
+        const mapRes = await fetch(`${backendUrl}/api/map-form-fields`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fileData: base64Data,
+            mimeType: file.type || 'image/png',
+            fileName: file.name,
+            formSchema
+          })
+        });
+
+        if (mapRes.ok) {
+          const mapData = await mapRes.json();
+          if (mapData.success && mapData.fieldMap) {
+            aiFieldMap = mapData.fieldMap;
+            Overlay.setAiProgress(100, 'AI Field Mapping Complete ✓');
+            console.log('[ErrorGuard] AI Field Map received:', aiFieldMap);
+            Logger.info('ContentScript', 'AI form-mapping succeeded', aiFieldMap);
+          }
+        }
+      }
+    } catch (mapErr) {
+      Logger.warn('ContentScript', 'Form-mapping backend error, falling back to OCR', mapErr);
     }
 
-    // 4. Structured Document Parsing
+    // ── Fallback: standard OCR + document parser (if AI mapping not available) ──
+    if (!aiFieldMap) {
+      try {
+        ocrResult = await OcrEngine.extractText(file, (percent, msg) => {
+          Overlay.setAiProgress(percent, msg);
+        });
+      } catch (err) {
+        Logger.warn('ContentScript', 'OCR extraction issue', err);
+      }
+    }
+
+    // 5. Structured Document Parsing (for cross-check validation — always run)
     extractedDocData = DocumentParser.parse(ocrResult.text, ocrResult.aiData);
     extractedDocData.ocrConfidence = ocrResult.confidence;
     Overlay.setAiReady(extractedDocData);
 
-    // ── Log Full OCR and Parsed Output to Browser Console ──
     console.log('================== [ErrorGuard OCR] RAW TEXT START ==================');
     console.log(ocrResult.text || '(No text extracted)');
     console.log('================== [ErrorGuard OCR] RAW TEXT END ====================');
     console.log('[ErrorGuard] Parsed Document Structure:', extractedDocData);
 
-    Logger.info('ContentScript', 'Extracted document data summary:', {
-      detectedName: extractedDocData.name || '(none)',
-      detectedDob: extractedDocData.dob || '(none)',
-      detectedAadhaar: extractedDocData.aadhaarNo || '(none)',
-      detectedCertNo: extractedDocData.certificateNo || '(none)',
-      docType: extractedDocData.docType
-    });
+    // 6. Show Auto-Fill Banner
+    if (aiFieldMap) {
+      // Build a synthetic docData from the AI field map so the banner's
+      // guard check (docData.name / docData.dob / docData.certificateNo) passes.
+      // The banner needs at least one non-null value to render.
+      const bannerDocData = {
+        name: aiFieldMap.fullName || extractedDocData.name || null,
+        dob: aiFieldMap.dob || extractedDocData.dob || null,
+        certificateNo: aiFieldMap.aadhaarNumber || aiFieldMap.panNumber || aiFieldMap.certificateNo || extractedDocData.certificateNo || null,
+        docType: extractedDocData.docType || 'DOCUMENT'
+      };
 
-    // 5. Smart AI Auto-Fill Offer (if form has blank fields or new document uploaded)
-    const currentScan = Detector.scan();
-    const hasBlanks = currentScan.fields.some(f =>
-      f.semantic &&
-      (f.semantic.type === 'FULL_NAME' || f.semantic.type === 'DOB' || f.semantic.type === 'CERTIFICATE_NUMBER') &&
-      !f.value
-    );
-
-    if (hasBlanks && (extractedDocData.name || extractedDocData.dob || extractedDocData.certificateNo)) {
-      Overlay.showAutoFillBanner(extractedDocData, () => applyAutoFill(extractedDocData));
+      const hasAnyData = bannerDocData.name || bannerDocData.dob || bannerDocData.certificateNo;
+      if (hasAnyData) {
+        Overlay.showAutoFillBanner(bannerDocData, () => applyFieldMap(aiFieldMap));
+      }
+    } else {
+      // Legacy fallback path: use parsed doc data + semantic matching
+      const currentScan = Detector.scan();
+      const hasBlanks = currentScan.fields.some(f =>
+        f.semantic &&
+        (f.semantic.type === 'FULL_NAME' || f.semantic.type === 'DOB' || f.semantic.type === 'CERTIFICATE_NUMBER') &&
+        !f.value
+      );
+      if (hasBlanks && (extractedDocData.name || extractedDocData.dob || extractedDocData.certificateNo)) {
+        Overlay.showAutoFillBanner(extractedDocData, () => applyAutoFill(extractedDocData));
+      }
     }
 
-    // 6. Complete evaluation with newly extracted document data
+    // 7. Complete evaluation with newly extracted document data
     await runEvaluation({
       showAlerts: userHasCheckedErrors,
       cachedFileIssues: fileIssues,
       cachedQualityIssues: qualityIssues
     });
+  }
+
+  /**
+   * NEW: Apply AI-generated field map directly by element id/name.
+   * Zero regex. Zero semantic guessing. Gemini told us exactly which field gets what.
+   * @param {Object} fieldMap - { fieldKey: value } from /api/map-form-fields
+   */
+  function applyFieldMap(fieldMap) {
+    if (!fieldMap) return;
+    let filledCount = 0;
+
+    for (const [fieldKey, value] of Object.entries(fieldMap)) {
+      if (value === null || value === undefined || value === '') continue;
+
+      // Try getElementById first (most reliable), then name
+      let el = document.getElementById(fieldKey);
+      if (!el) el = document.querySelector(`[name="${fieldKey}"]`);
+      if (!el) continue;
+
+      // Don't overwrite a field the user has already filled
+      if (el.value && el.value.trim() !== '') continue;
+
+      el.value = String(value);
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+      filledCount++;
+    }
+
+    Logger.info('ContentScript', `AI field map applied: ${filledCount} fields filled`);
+    console.log(`[ErrorGuard] applyFieldMap: filled ${filledCount} fields from AI mapping`);
+    runEvaluation({ showAlerts: userHasCheckedErrors });
   }
 
   function applyAutoFill(data) {
@@ -171,9 +340,9 @@
         item.field.dispatchEvent(new Event('change', { bubbles: true }));
       }
 
-      // FATHER_NAME: skip auto-fill — Aadhaar/PAN does not reliably expose
-      // the father's name in a structured way, so never write to this field.
-      if (sType === 'FATHER_NAME') continue;
+      // FATHER_NAME / MOTHER_NAME: skip auto-fill — Aadhaar/PAN does not
+      // contain parent names in a reliably extractable structured form.
+      if (sType === 'FATHER_NAME' || sType === 'MOTHER_NAME') continue;
 
       if (sType === 'DOB' && data.dob) {
         const iso = Normalize.date(data.dob);
