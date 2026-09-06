@@ -133,7 +133,8 @@ Cert No: AP123456`,
      * @param {function(number, string)} onProgress - callback with (percent, statusMessage)
      * @returns {Promise<{ text: string, confidence: number }>}
      */
-    async extractText(file, onProgress = () => {}) {
+    async extractText(file, onProgress = () => {
+    }) {
       if (!file) return { text: '', confidence: 0 };
 
       // ── Step 1: Check demo-document fast path ──
@@ -150,30 +151,73 @@ Cert No: AP123456`,
         return demoResult;
       }
 
-      // ── Step 2: High-Accuracy Google Gemini Vision AI ──
+      // ── Step 2: Local AI Vision Backend (Zero UI Key Needed) ──
+      try {
+        onProgress(15, 'Checking AI Vision backend...');
+        const healthCheck = await fetch('http://localhost:5000/api/health').catch(() => null);
+        if (healthCheck && healthCheck.ok) {
+          onProgress(25, 'Sending document to AI Vision backend...');
+          const base64Data = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result.split(',')[1]);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+
+          onProgress(45, 'Gemini AI parsing unlabelled document & layout...');
+          const backendRes = await fetch('http://localhost:5000/api/analyze-document', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              fileData: base64Data,
+              mimeType: file.type || (file.name.endsWith('.pdf') ? 'application/pdf' : 'image/png'),
+              fileName: file.name
+            })
+          });
+
+          if (backendRes.ok) {
+            const data = await backendRes.json();
+            if (data.success && data.fields) {
+              onProgress(100, 'AI Analysis Complete');
+              window.ErrorGuard.Logger.info('OcrEngine', 'Backend AI Vision completed successfully', data.fields);
+              return {
+                text: data.raw_text || '',
+                confidence: data.confidence || 0.98,
+                aiData: {
+                  name: data.fields.full_name || null,
+                  dob: data.fields.dob || null,
+                  certificateNo: data.fields.certificate_no || null,
+                  gender: data.fields.gender || null,
+                  fatherName: data.fields.father_name || null,
+                  authority: data.fields.issuing_authority || null,
+                  docType: data.document_type || 'DOCUMENT',
+                  notes: data.notes || ''
+                },
+                isAi: true
+              };
+            }
+          }
+        }
+      } catch (backendErr) {
+        window.ErrorGuard.Logger.info('OcrEngine', 'Backend AI not available, trying local/extension AI...', backendErr);
+      }
+
+      // ── Step 3: Direct Extension Gemini Key (if configured) ──
       let googleApiKey = '';
       if (window.ErrorGuard.Storage && window.ErrorGuard.Storage.getGoogleApiKey) {
         googleApiKey = await window.ErrorGuard.Storage.getGoogleApiKey();
       }
-
       if (googleApiKey && window.ErrorGuard.GoogleVision) {
         try {
-          window.ErrorGuard.Logger.info('OcrEngine', `Running Google Gemini Vision AI for: ${file.name} (${file.type || 'file'})`);
+          onProgress(25, 'Analyzing with Google Gemini Vision...');
           const aiResult = await window.ErrorGuard.GoogleVision.analyzeDocument(file, googleApiKey, onProgress);
-
-          console.log('%c================== [ErrorGuard] GEMINI VISION AI EXTRACTED DATA ==================', 'color: #10b981; font-weight: bold; font-size: 13px;');
-          console.log('Structured Fields:', aiResult.aiData);
-          console.log('Raw Transcript:', aiResult.text);
-          console.log('%c==================================================================================', 'color: #10b981; font-weight: bold;');
-
           return aiResult;
-        } catch (geminiErr) {
-          window.ErrorGuard.Logger.warn('OcrEngine', 'Gemini Vision AI issue, falling back to local OCR', geminiErr);
-          onProgress(15, 'Gemini AI issue, switching to offline Tesseract OCR...');
+        } catch (aiErr) {
+          window.ErrorGuard.Logger.warn('OcrEngine', 'Extension Gemini Vision issue, falling back to local OCR', aiErr);
         }
       }
 
-      // ── Step 3: Offline Tesseract.js OCR (Fallback) ──
+      // ── Step 4: Offline Tesseract.js OCR (Fallback) ──
       window.ErrorGuard.Logger.info('OcrEngine', `Starting offline Tesseract.js OCR for: ${file.name} (${file.size} bytes)`);
 
       // Check if Tesseract is available
@@ -196,12 +240,11 @@ Cert No: AP123456`,
         if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL) {
           workerOptions.workerPath = chrome.runtime.getURL('lib/worker.min.js');
           workerOptions.corePath = chrome.runtime.getURL('lib/tesseract-core-simd-lstm.wasm.js');
+          // Language data from CDN (too large to bundle, ~15MB for eng)
+          workerOptions.langPath = 'https://tessdata.projectnaptha.com/4.0.0';
         }
-        // Language data from CDN or fast mirror
-        workerOptions.langPath = 'https://tessdata.projectnaptha.com/4.0.0';
 
-        const oem = (Tesseract.OEM && Tesseract.OEM.LSTM_ONLY !== undefined) ? Tesseract.OEM.LSTM_ONLY : 1;
-        const worker = await Tesseract.createWorker('eng', oem, {
+        const worker = await Tesseract.createWorker('eng', Tesseract.OEM.LSTM_ONLY, {
           ...workerOptions,
           logger: (m) => {
             if (m.status === 'recognizing text' && typeof m.progress === 'number') {
@@ -227,10 +270,6 @@ Cert No: AP123456`,
         await worker.terminate();
 
         onProgress(100, 'OCR Complete');
-
-        console.log('%c================== [ErrorGuard] RAW OCR EXTRACTED TEXT ==================', 'color: #38bdf8; font-weight: bold; font-size: 13px;');
-        console.log(text);
-        console.log('%c=========================================================================', 'color: #38bdf8; font-weight: bold;');
 
         window.ErrorGuard.Logger.info('OcrEngine', `Real OCR completed. Confidence: ${Math.round(confidence * 100)}%, Text length: ${text.length} chars`);
 

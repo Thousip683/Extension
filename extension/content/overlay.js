@@ -323,6 +323,86 @@
         this.drawerEl.classList.add('eg-drawer-closed');
       }
     }
+
+    // ─── AI Auto-Fill & Auto-Correct In-Page Components ───
+    showAutoFillBanner(docData, onApply) {
+      this.hideAutoFillBanner();
+      if (!docData || (!docData.name && !docData.dob && !docData.certificateNo)) return;
+
+      const banner = document.createElement('div');
+      banner.id = 'eg-autofill-banner';
+      banner.className = 'eg-autofill-banner';
+
+      const typeName = docData.docType === 'AADHAAR' ? 'Aadhaar Card' :
+                       docData.docType === 'PAN' ? 'PAN Card' :
+                       docData.docType === 'CASTE_CERTIFICATE' ? 'Caste Certificate' : 'Official Document';
+
+      banner.innerHTML = `
+        <div class="eg-autofill-header">
+          <div class="eg-autofill-header-left">
+            <span class="eg-autofill-sparkle">✨</span>
+            <div>
+              <strong class="eg-autofill-title">AI Detected ${typeName}</strong>
+              <p class="eg-autofill-subtitle">Details extracted from unlabelled document. Click to auto-fill form:</p>
+            </div>
+          </div>
+          <button type="button" class="eg-banner-close" id="egCloseAutoFill">✕</button>
+        </div>
+        <div class="eg-autofill-tags">
+          ${docData.name ? `<span class="eg-autofill-tag">👤 Name: <strong>${docData.name}</strong></span>` : ''}
+          ${docData.dob ? `<span class="eg-autofill-tag">📅 DOB: <strong>${docData.dob}</strong></span>` : ''}
+          ${docData.certificateNo ? `<span class="eg-autofill-tag">🆔 ID: <strong>${docData.certificateNo}</strong></span>` : ''}
+        </div>
+        <div class="eg-autofill-footer">
+          <button type="button" class="eg-btn-autofill" id="egApplyAutoFill">
+            🪄 1-Click Auto-Fill Form
+          </button>
+          <button type="button" class="eg-btn-dismiss-autofill" id="egDismissAutoFill">
+            Dismiss
+          </button>
+        </div>
+      `;
+
+      document.body.appendChild(banner);
+
+      document.getElementById('egCloseAutoFill').addEventListener('click', () => this.hideAutoFillBanner());
+      document.getElementById('egDismissAutoFill').addEventListener('click', () => this.hideAutoFillBanner());
+      document.getElementById('egApplyAutoFill').addEventListener('click', () => {
+        if (typeof onApply === 'function') onApply();
+        this.hideAutoFillBanner();
+      });
+    }
+
+    hideAutoFillBanner() {
+      const existing = document.getElementById('eg-autofill-banner');
+      if (existing) existing.remove();
+    }
+
+    showAutoCorrectChip(fieldElement, correctValue, onApply) {
+      if (!fieldElement || !correctValue) return;
+
+      const parent = fieldElement.parentElement || fieldElement.closest('.form-group') || fieldElement;
+      const existingChip = parent.querySelector('.eg-autocorrect-chip');
+      if (existingChip) existingChip.remove();
+
+      const chip = document.createElement('div');
+      chip.className = 'eg-autocorrect-chip';
+      chip.innerHTML = `
+        <span class="eg-chip-text">⚡ Document has: <strong>"${correctValue}"</strong></span>
+        <button type="button" class="eg-chip-apply-btn">Auto-Fix</button>
+      `;
+
+      parent.appendChild(chip);
+
+      chip.querySelector('.eg-chip-apply-btn').addEventListener('click', () => {
+        if (typeof onApply === 'function') onApply();
+        chip.remove();
+      });
+    }
+
+    clearAutoCorrectChips() {
+      document.querySelectorAll('.eg-autocorrect-chip').forEach(el => el.remove());
+    }
   }
 
   window.ErrorGuard.Overlay = new OverlayManager();

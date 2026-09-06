@@ -529,3 +529,181 @@
 .eg-btn-primary:hover {
   background: #1d4ed8;
 }
+
+/* ─── AI Auto-Fill Floating Banner ─── */
+.eg-autofill-banner {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  max-width: 440px;
+  width: calc(100vw - 48px);
+  background: linear-gradient(135deg, #0f172a, #1e1b4b);
+  border: 1.5px solid #6366f1;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(99, 102, 241, 0.4);
+  border-radius: 12px;
+  padding: 16px;
+  z-index: 999999;
+  font-family: 'Inter', system-ui, sans-serif;
+  color: #f8fafc;
+  animation: egSlideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes egSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.eg-autofill-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.eg-autofill-header-left {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.eg-autofill-sparkle {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.eg-autofill-title {
+  font-size: 0.95rem;
+  color: #c7d2fe;
+  display: block;
+}
+
+.eg-autofill-subtitle {
+  font-size: 0.775rem;
+  color: #94a3b8;
+  margin: 3px 0 0 0;
+}
+
+.eg-banner-close {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 2px 6px;
+  line-height: 1;
+  transition: color 0.2s;
+}
+
+.eg-banner-close:hover {
+  color: #f8fafc;
+}
+
+.eg-autofill-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 12px 0;
+}
+
+.eg-autofill-tag {
+  background: rgba(99, 102, 241, 0.18);
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  color: #e0e7ff;
+  font-size: 0.75rem;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.eg-autofill-tag strong {
+  color: #ffffff;
+}
+
+.eg-autofill-footer {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.eg-btn-autofill {
+  flex: 1;
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 0.825rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.4);
+  transition: transform 0.15s, opacity 0.15s;
+}
+
+.eg-btn-autofill:hover {
+  transform: translateY(-1px);
+  opacity: 0.95;
+}
+
+.eg-btn-dismiss-autofill {
+  background: #334155;
+  color: #cbd5e1;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.eg-btn-dismiss-autofill:hover {
+  background: #475569;
+}
+
+/* ─── 1-Click Auto-Correct Discrepancy Chip ─── */
+.eg-autocorrect-chip {
+  margin-top: 6px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 6px;
+  padding: 6px 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: 'Inter', system-ui, sans-serif;
+  animation: egFadeIn 0.25s ease-out;
+}
+
+@keyframes egFadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.eg-chip-text {
+  font-size: 0.75rem;
+  color: #92400e;
+}
+
+.eg-chip-text strong {
+  color: #78350f;
+  text-decoration: underline;
+}
+
+.eg-chip-apply-btn {
+  background: #d97706;
+  color: white;
+  border: none;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.eg-chip-apply-btn:hover {
+  background: #b45309;
+}

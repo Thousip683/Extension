@@ -5,6 +5,7 @@
   "scripts": {
     "start": "npx -y serve demo-portal -p 3000",
     "portal": "python -m http.server 3000 --directory demo-portal",
+    "backend": "node backend/server.js",
     "test": "node test/runner.js",
     "generate-docs": "python demo-portal/test-docs/generate_test_docs.py"
   },

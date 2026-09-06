@@ -135,8 +135,45 @@
       docType: extractedDocData.docType
     });
 
-    // 5. Re-run complete evaluation with newly extracted document data
+    // 5. Smart AI Auto-Fill Offer (if form has blank fields or new document uploaded)
+    const currentScan = Detector.scan();
+    const hasBlanks = currentScan.fields.some(f =>
+      f.semantic &&
+      (f.semantic.type === 'FULL_NAME' || f.semantic.type === 'DOB' || f.semantic.type === 'CERTIFICATE_NUMBER') &&
+      !f.value
+    );
+
+    if (hasBlanks && (extractedDocData.name || extractedDocData.dob || extractedDocData.certificateNo)) {
+      Overlay.showAutoFillBanner(extractedDocData, () => applyAutoFill(extractedDocData));
+    }
+
+    // 6. Re-run complete evaluation with newly extracted document data
     await runEvaluation(fileIssues, qualityIssues);
+  }
+
+  function applyAutoFill(data) {
+    if (!data) return;
+    const scanResult = Detector.scan();
+    for (const item of scanResult.fields) {
+      if (!item.semantic) continue;
+      if (item.semantic.type === 'FULL_NAME' && data.name) {
+        item.field.value = data.name;
+        item.field.dispatchEvent(new Event('input', { bubbles: true }));
+        item.field.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+      if (item.semantic.type === 'DOB' && data.dob) {
+        const iso = Normalize.date(data.dob);
+        item.field.value = item.field.type === 'date' ? (iso || data.dob) : data.dob;
+        item.field.dispatchEvent(new Event('input', { bubbles: true }));
+        item.field.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+      if (item.semantic.type === 'CERTIFICATE_NUMBER' && data.certificateNo) {
+        item.field.value = data.certificateNo;
+        item.field.dispatchEvent(new Event('input', { bubbles: true }));
+        item.field.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    }
+    runEvaluation();
   }
 
   // Expose global re-evaluation trigger for manual refresh
@@ -323,6 +360,37 @@
 
     // 5. Update In-Page UI Overlay
     Overlay.update(latestReport);
+
+    // 5b. Show 1-Click Auto-Correct Chips for Mismatches
+    Overlay.clearAutoCorrectChips();
+    if (extractedDocData) {
+      for (const issue of crossCheckIssues) {
+        if (issue.code === 'NAME_MISMATCH' && extractedDocData.name) {
+          const nameField = scanResult.fields.find(f => f.semantic?.type === 'FULL_NAME');
+          if (nameField && nameField.field) {
+            Overlay.showAutoCorrectChip(nameField.field, extractedDocData.name, () => {
+              nameField.field.value = extractedDocData.name;
+              nameField.field.dispatchEvent(new Event('input', { bubbles: true }));
+              nameField.field.dispatchEvent(new Event('change', { bubbles: true }));
+              runEvaluation();
+            });
+          }
+        }
+        if (issue.code === 'DOB_MISMATCH' && extractedDocData.dob) {
+          const dobField = scanResult.fields.find(f => f.semantic?.type === 'DOB');
+          if (dobField && dobField.field) {
+            const iso = Normalize.date(extractedDocData.dob);
+            const targetVal = dobField.field.type === 'date' ? (iso || extractedDocData.dob) : extractedDocData.dob;
+            Overlay.showAutoCorrectChip(dobField.field, targetVal, () => {
+              dobField.field.value = targetVal;
+              dobField.field.dispatchEvent(new Event('input', { bubbles: true }));
+              dobField.field.dispatchEvent(new Event('change', { bubbles: true }));
+              runEvaluation();
+            });
+          }
+        }
+      }
+    }
 
     // 6. Persist to Chrome Storage for Popup
     await Storage.set('ACTIVE_GUARD_REPORT', latestReport);
