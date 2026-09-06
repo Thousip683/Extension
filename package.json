@@ -7,6 +7,7 @@
     "portal": "python -m http.server 3000 --directory demo-portal",
     "backend": "node backend/server.js",
     "test": "node test/runner.js",
+    "test:model": "node test/test_xberg_model.js",
     "generate-docs": "python demo-portal/test-docs/generate_test_docs.py"
   },
   "keywords": [
@@ -20,6 +21,7 @@
   "author": "Pre-Submission Error Guard Team",
   "license": "Apache-2.0",
   "dependencies": {
+    "@xberg-io/xberg": "^1.0.14",
     "tesseract.js": "^7.0.0"
   }
 }

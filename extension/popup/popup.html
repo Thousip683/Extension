@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,6 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
+
 <body>
   <!-- Header -->
   <header class="popup-header">
@@ -30,17 +32,12 @@
     <div class="hero-card" id="heroCard">
       <div class="health-gauge">
         <svg viewBox="0 0 36 36" class="circular-chart" id="chartSvg">
-          <path class="circle-bg"
-            d="M18 2.0845
+          <path class="circle-bg" d="M18 2.0845
               a 15.9155 15.9155 0 0 1 0 31.831
-              a 15.9155 15.9155 0 0 1 0 -31.831"
-          />
-          <path class="circle" id="circleProgress"
-            stroke-dasharray="85, 100"
-            d="M18 2.0845
+              a 15.9155 15.9155 0 0 1 0 -31.831" />
+          <path class="circle" id="circleProgress" stroke-dasharray="85, 100" d="M18 2.0845
               a 15.9155 15.9155 0 0 1 0 31.831
-              a 15.9155 15.9155 0 0 1 0 -31.831"
-          />
+              a 15.9155 15.9155 0 0 1 0 -31.831" />
           <text x="18" y="20.35" class="percentage" id="scoreText">--%</text>
         </svg>
       </div>
@@ -98,34 +95,6 @@
       </div>
     </div>
 
-    <!-- AI Vision Intelligence Card -->
-    <div class="card ai-card">
-      <div class="card-header">
-        <div class="ai-header-title">
-          <span class="ai-sparkle">✨</span>
-          <h3>AI Vision (Google Gemini)</h3>
-        </div>
-        <span class="ai-status-pill pill-offline" id="aiStatusPill">Offline Mode</span>
-      </div>
-      <p class="ai-card-desc">
-        Enables instant PDF scanning, Aadhaar/PAN layout parsing, and AI discrepancy detection.
-      </p>
-      <div class="ai-key-form">
-        <div class="input-wrapper">
-          <input type="password" id="geminiApiKeyInput" placeholder="Paste Google API Key (AIza...)" autocomplete="off">
-          <button type="button" id="toggleKeyVisibility" class="btn-toggle-vis" title="Show/Hide Key">👁️</button>
-        </div>
-        <div class="ai-action-buttons">
-          <button type="button" id="saveKeyBtn" class="btn-primary-ai">⚡ Connect & Save</button>
-          <button type="button" id="removeKeyBtn" class="btn-secondary-ai" title="Remove key & use offline OCR">✕ Clear</button>
-        </div>
-        <div id="aiKeyFeedback" class="ai-feedback hidden"></div>
-        <div class="ai-help-link">
-          <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer">Get a free Google API key ↗</a>
-        </div>
-      </div>
-    </div>
-
     <!-- Issues List Card -->
     <div class="card" id="issuesCard">
       <div class="card-header">
@@ -150,4 +119,5 @@
 
   <script src="popup.js"></script>
 </body>
+
 </html>

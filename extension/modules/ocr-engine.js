@@ -153,8 +153,14 @@ Cert No: AP123456`,
 
       // ── Step 2: Local AI Vision Backend (Zero UI Key Needed) ──
       try {
-        onProgress(15, 'Checking AI Vision backend...');
-        const healthCheck = await fetch('http://localhost:5000/api/health').catch(() => null);
+        // Check port 5001 first (avoids macOS AirPlay), fallback to 5000
+        let backendUrl = 'http://localhost:5001';
+        let healthCheck = await fetch(`${backendUrl}/api/health`).catch(() => null);
+        if (!healthCheck || !healthCheck.ok) {
+          backendUrl = 'http://localhost:5000';
+          healthCheck = await fetch(`${backendUrl}/api/health`).catch(() => null);
+        }
+
         if (healthCheck && healthCheck.ok) {
           onProgress(25, 'Sending document to AI Vision backend...');
           const base64Data = await new Promise((resolve, reject) => {
@@ -165,7 +171,7 @@ Cert No: AP123456`,
           });
 
           onProgress(45, 'Gemini AI parsing unlabelled document & layout...');
-          const backendRes = await fetch('http://localhost:5000/api/analyze-document', {
+          const backendRes = await fetch(`${backendUrl}/api/analyze-document`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

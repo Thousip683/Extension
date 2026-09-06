@@ -15,6 +15,10 @@
       this.drawerEl = null;
       this.highlightedElements = new Set();
       this.currentReport = null;
+      this.userHasCheckedErrors = false;
+      this.isAiProcessing = false;
+      this.aiDocumentReady = false;
+      this.lastAiDocData = null;
     }
 
     init() {
@@ -23,22 +27,43 @@
       // 1. Floating Badge
       this.badgeEl = document.createElement('div');
       this.badgeEl.id = 'error-guard-badge';
-      this.badgeEl.className = 'eg-floating-badge eg-checking';
+      this.badgeEl.className = 'eg-floating-badge eg-idle';
       this.badgeEl.innerHTML = `
         <div class="eg-badge-content">
           <span class="eg-badge-icon">🛡️</span>
           <div class="eg-badge-text">
             <span class="eg-badge-title">Error Guard</span>
-            <span class="eg-badge-status" id="egBadgeStatus">Scanning Form...</span>
+            <span class="eg-badge-status" id="egBadgeStatus">Ready to Inspect</span>
           </div>
+          <button type="button" class="eg-badge-check-btn" id="egBadgeCheckBtn" title="Inspect Form for Pre-Submission Errors">
+            🔍 Check for Errors
+          </button>
           <button type="button" class="eg-badge-refresh-btn" id="egBadgeRefresh" title="Re-scan and Refresh Verification">🔄</button>
         </div>
       `;
       document.body.appendChild(this.badgeEl);
 
+      const checkBtn = document.getElementById('egBadgeCheckBtn');
+      if (checkBtn) {
+        checkBtn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          this.userHasCheckedErrors = true;
+          if (window.ErrorGuard && window.ErrorGuard.reEvaluate) {
+            await window.ErrorGuard.reEvaluate({ showAlerts: true, openDrawer: true });
+          }
+        });
+      }
+
       this.badgeEl.addEventListener('click', (e) => {
-        if (e.target.closest('#egBadgeRefresh')) return;
-        this.toggleDrawer();
+        if (e.target.closest('#egBadgeRefresh') || e.target.closest('#egBadgeCheckBtn')) return;
+        if (!this.userHasCheckedErrors) {
+          this.userHasCheckedErrors = true;
+          if (window.ErrorGuard && window.ErrorGuard.reEvaluate) {
+            window.ErrorGuard.reEvaluate({ showAlerts: true, openDrawer: true });
+          }
+        } else {
+          this.toggleDrawer();
+        }
       });
 
       const handleRefreshClick = async (e) => {
@@ -48,7 +73,7 @@
         const badgeStatus = document.getElementById('egBadgeStatus');
         if (badgeStatus) badgeStatus.textContent = 'Refreshing...';
         if (window.ErrorGuard && window.ErrorGuard.reEvaluate) {
-          await window.ErrorGuard.reEvaluate();
+          await window.ErrorGuard.reEvaluate({ showAlerts: true });
         }
         setTimeout(() => {
           btn.classList.remove('eg-spinning');
@@ -122,43 +147,103 @@
       });
     }
 
+    setAiProgress(percent, msg) {
+      this.isAiProcessing = true;
+      if (!this.badgeEl) this.init();
+      const badgeStatus = document.getElementById('egBadgeStatus');
+      if (badgeStatus) {
+        badgeStatus.innerHTML = `<span class="eg-ai-pulse">⚡</span> AI Analyzing... ${percent}%`;
+      }
+      if (this.badgeEl) {
+        this.badgeEl.className = 'eg-floating-badge eg-ai-analyzing';
+      }
+    }
+
+    setAiReady(docData) {
+      this.isAiProcessing = false;
+      this.aiDocumentReady = true;
+      this.lastAiDocData = docData;
+      if (!this.badgeEl) this.init();
+      const badgeStatus = document.getElementById('egBadgeStatus');
+      if (!this.userHasCheckedErrors) {
+        if (badgeStatus) {
+          badgeStatus.innerHTML = `⚡ AI Ready • Click Check`;
+        }
+        if (this.badgeEl) {
+          this.badgeEl.className = 'eg-floating-badge eg-ai-ready';
+        }
+      }
+    }
+
     /**
      * Updates overlay states based on the latest validation report
      * @param {object} report - output of ErrorEngine.aggregate
+     * @param {object} [options] - display options { showAlerts, openDrawer }
      */
-    update(report) {
+    update(report, options = {}) {
       this.currentReport = report;
       if (!this.badgeEl) this.init();
 
+      const showAlerts = options.showAlerts !== undefined ? options.showAlerts : this.userHasCheckedErrors;
+      this.userHasCheckedErrors = showAlerts;
+
       const badgeStatus = document.getElementById('egBadgeStatus');
       const drawerScore = document.getElementById('egDrawerScore');
+      const checkBtn = document.getElementById('egBadgeCheckBtn');
 
       // Clear previous field outlines
       this.clearFieldHighlights();
 
-      if (report.isReady) {
-        this.badgeEl.className = 'eg-floating-badge eg-ready';
-        badgeStatus.textContent = 'READY TO SUBMIT';
-        if (drawerScore) {
-          drawerScore.textContent = `Health: ${report.healthScore}% (Ready)`;
-          drawerScore.className = 'eg-health-tag eg-tag-ready';
-        }
-      } else {
-        const blockingCount = report.issues.blocking.length;
-        this.badgeEl.className = 'eg-floating-badge eg-not-ready';
-        badgeStatus.textContent = `${blockingCount} Issue${blockingCount > 1 ? 's' : ''} (NOT READY)`;
-        if (drawerScore) {
-          drawerScore.textContent = `Health: ${report.healthScore}% (Action Required)`;
-          drawerScore.className = 'eg-health-tag eg-tag-error';
+      if (!showAlerts) {
+        // Calm, non-intrusive idle state: No red boxes on blank fields!
+        if (checkBtn) checkBtn.style.display = 'inline-flex';
+
+        if (this.isAiProcessing) {
+          this.badgeEl.className = 'eg-floating-badge eg-ai-analyzing';
+        } else if (this.aiDocumentReady) {
+          this.badgeEl.className = 'eg-floating-badge eg-ai-ready';
+          if (badgeStatus) badgeStatus.innerHTML = `⚡ AI Ready • Click Check`;
+        } else {
+          this.badgeEl.className = 'eg-floating-badge eg-idle';
+          if (badgeStatus) badgeStatus.textContent = 'Active • Click to Check';
         }
 
-        // Highlight problematic fields on the actual form
-        for (const issue of report.issues.blocking) {
-          this.highlightField(issue);
+        if (drawerScore) {
+          drawerScore.textContent = `Health: Ready to Audit`;
+          drawerScore.className = 'eg-health-tag';
+        }
+      } else {
+        // User clicked check button or submitted form -> show full audit results
+        if (checkBtn) checkBtn.style.display = 'none';
+
+        if (report.isReady) {
+          this.badgeEl.className = 'eg-floating-badge eg-ready';
+          if (badgeStatus) badgeStatus.textContent = 'READY TO SUBMIT';
+          if (drawerScore) {
+            drawerScore.textContent = `Health: ${report.healthScore}% (Ready)`;
+            drawerScore.className = 'eg-health-tag eg-tag-ready';
+          }
+        } else {
+          const blockingCount = report.issues.blocking.length;
+          this.badgeEl.className = 'eg-floating-badge eg-not-ready';
+          if (badgeStatus) badgeStatus.textContent = `${blockingCount} Issue${blockingCount > 1 ? 's' : ''} (Action Required)`;
+          if (drawerScore) {
+            drawerScore.textContent = `Health: ${report.healthScore}% (Action Required)`;
+            drawerScore.className = 'eg-health-tag eg-tag-error';
+          }
+
+          // Highlight problematic fields on the actual form
+          for (const issue of report.issues.blocking) {
+            this.highlightField(issue);
+          }
         }
       }
 
-      this.renderDrawerContent(report);
+      this.renderDrawerContent(report, showAlerts);
+
+      if (options.openDrawer) {
+        this.openDrawer();
+      }
     }
 
     highlightField(issue) {
@@ -195,9 +280,46 @@
       this.highlightedElements.clear();
     }
 
-    renderDrawerContent(report) {
+    renderDrawerContent(report, showAlerts = true) {
       const body = document.getElementById('egDrawerBody');
       if (!body) return;
+
+      if (!showAlerts) {
+        body.innerHTML = `
+          <div class="eg-status-banner eg-banner-idle">
+            <h4>🛡️ Pre-Submission Audit Ready</h4>
+            <p>Error Guard is actively scanning your form and processing document AI in the background. Alerts are paused until you request a check.</p>
+          </div>
+          <div style="text-align: center; margin: 20px 0;">
+            <button type="button" class="eg-btn eg-btn-primary" id="egDrawerAuditBtn" style="padding: 12px 20px; font-size: 0.95rem; border-radius: 8px; cursor: pointer; width: 100%; font-weight: 700;">
+              🔍 Check for Errors Now
+            </button>
+          </div>
+          <div class="eg-section-checklist">
+            <h5>Background Monitoring Status</h5>
+            <div class="eg-check-grid">
+              <div class="eg-check-item pass">
+                <span>⚡</span>
+                <span>Real-time Form Listener Active</span>
+              </div>
+              <div class="eg-check-item ${this.aiDocumentReady ? 'pass' : (this.isAiProcessing ? 'pass' : 'fail')}">
+                <span>${this.aiDocumentReady ? '✅' : (this.isAiProcessing ? '⚡' : '⏳')}</span>
+                <span>${this.aiDocumentReady ? 'AI Document Model Ready' : (this.isAiProcessing ? 'AI Analyzing Uploaded Document...' : 'Awaiting Document Upload')}</span>
+              </div>
+            </div>
+          </div>
+        `;
+        const auditBtn = document.getElementById('egDrawerAuditBtn');
+        if (auditBtn) {
+          auditBtn.addEventListener('click', async () => {
+            this.userHasCheckedErrors = true;
+            if (window.ErrorGuard && window.ErrorGuard.reEvaluate) {
+              await window.ErrorGuard.reEvaluate({ showAlerts: true });
+            }
+          });
+        }
+        return;
+      }
 
       let html = `
         <div class="eg-status-banner ${report.isReady ? 'eg-banner-ready' : 'eg-banner-error'}">
@@ -206,6 +328,12 @@
             ? 'All form values, document constraints, and identity cross-checks have passed.' 
             : `${report.issues.blocking.length} blocking issue(s) need your attention before submitting.`}
           </p>
+        </div>
+
+        <div style="margin-bottom: 16px; display: flex; justify-content: flex-end;">
+          <button type="button" class="eg-badge-dismiss-btn" id="egDrawerDismissAlertsBtn" style="padding: 6px 12px; font-size: 0.75rem; border-radius: 6px; cursor: pointer; background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1;">
+            ✕ Hide Alerts & Resume Typing
+          </button>
         </div>
 
         <div class="eg-section-checklist">
@@ -251,6 +379,18 @@
       }
 
       body.innerHTML = html;
+
+      const dismissBtn = document.getElementById('egDrawerDismissAlertsBtn');
+      if (dismissBtn) {
+        dismissBtn.addEventListener('click', () => {
+          this.userHasCheckedErrors = false;
+          this.clearFieldHighlights();
+          if (window.ErrorGuard && window.ErrorGuard.reEvaluate) {
+            window.ErrorGuard.reEvaluate({ showAlerts: false });
+          }
+          this.closeDrawer();
+        });
+      }
 
       // Attach jump buttons
       body.querySelectorAll('.eg-jump-btn').forEach(btn => {

@@ -166,7 +166,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  // ─── AI Vision Settings Controller ───
+  // ─── AI Vision Settings Controller (Safely guarded if card is present) ───
   const apiKeyInput = document.getElementById('geminiApiKeyInput');
   const toggleKeyBtn = document.getElementById('toggleKeyVisibility');
   const saveKeyBtn = document.getElementById('saveKeyBtn');
@@ -174,95 +174,106 @@ document.addEventListener('DOMContentLoaded', async () => {
   const aiStatusPill = document.getElementById('aiStatusPill');
   const aiKeyFeedback = document.getElementById('aiKeyFeedback');
 
-  function showAiFeedback(msg, type = 'success') {
-    aiKeyFeedback.textContent = msg;
-    aiKeyFeedback.className = `ai-feedback ${type}`;
-    aiKeyFeedback.classList.remove('hidden');
-    setTimeout(() => {
-      aiKeyFeedback.classList.add('hidden');
-    }, 4000);
-  }
-
-  async function loadAiSettings() {
-    let key = '';
-    if (window.ErrorGuard && window.ErrorGuard.Storage) {
-      key = await window.ErrorGuard.Storage.getGoogleApiKey();
-    } else if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-      const res = await new Promise(r => chrome.storage.local.get(['google_gemini_api_key'], r));
-      key = res?.google_gemini_api_key || '';
+  if (apiKeyInput && toggleKeyBtn && saveKeyBtn && removeKeyBtn) {
+    function showAiFeedback(msg, type = 'success') {
+      if (!aiKeyFeedback) return;
+      aiKeyFeedback.textContent = msg;
+      aiKeyFeedback.className = `ai-feedback ${type}`;
+      aiKeyFeedback.classList.remove('hidden');
+      setTimeout(() => {
+        aiKeyFeedback.classList.add('hidden');
+      }, 4000);
     }
 
-    if (key && key.trim()) {
-      apiKeyInput.value = key.trim();
-      aiStatusPill.textContent = '🟢 Gemini Active';
-      aiStatusPill.className = 'ai-status-pill pill-active';
-    } else {
-      apiKeyInput.value = '';
-      aiStatusPill.textContent = 'Offline Mode';
-      aiStatusPill.className = 'ai-status-pill pill-offline';
-    }
-  }
-
-  // Toggle Visibility
-  toggleKeyBtn.addEventListener('click', () => {
-    apiKeyInput.type = apiKeyInput.type === 'password' ? 'text' : 'password';
-    toggleKeyBtn.textContent = apiKeyInput.type === 'password' ? '👁️' : '🔒';
-  });
-
-  // Save & Test Key
-  saveKeyBtn.addEventListener('click', async () => {
-    const rawVal = apiKeyInput.value.trim();
-    if (!rawVal) {
-      showAiFeedback('Please enter an API key.', 'error');
-      return;
-    }
-
-    saveKeyBtn.disabled = true;
-    saveKeyBtn.textContent = 'Testing...';
-
-    try {
-      // Validate key with Gemini
-      let testRes = { valid: true };
-      if (window.ErrorGuard && window.ErrorGuard.GoogleVision) {
-        testRes = await window.ErrorGuard.GoogleVision.testApiKey(rawVal);
+    async function loadAiSettings() {
+      let key = '';
+      if (window.ErrorGuard && window.ErrorGuard.Storage) {
+        key = await window.ErrorGuard.Storage.getGoogleApiKey();
+      } else if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        const res = await new Promise(r => chrome.storage.local.get(['google_gemini_api_key'], r));
+        key = res?.google_gemini_api_key || '';
       }
 
-      if (testRes.valid) {
-        if (window.ErrorGuard && window.ErrorGuard.Storage) {
-          await window.ErrorGuard.Storage.setGoogleApiKey(rawVal);
-        } else if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-          await new Promise(r => chrome.storage.local.set({ google_gemini_api_key: rawVal }, r));
+      if (key && key.trim()) {
+        apiKeyInput.value = key.trim();
+        if (aiStatusPill) {
+          aiStatusPill.textContent = '🟢 Gemini Active';
+          aiStatusPill.className = 'ai-status-pill pill-active';
+        }
+      } else {
+        apiKeyInput.value = '';
+        if (aiStatusPill) {
+          aiStatusPill.textContent = 'Offline Mode';
+          aiStatusPill.className = 'ai-status-pill pill-offline';
+        }
+      }
+    }
+
+    // Toggle Visibility
+    toggleKeyBtn.addEventListener('click', () => {
+      apiKeyInput.type = apiKeyInput.type === 'password' ? 'text' : 'password';
+      toggleKeyBtn.textContent = apiKeyInput.type === 'password' ? '👁️' : '🔒';
+    });
+
+    // Save & Test Key
+    saveKeyBtn.addEventListener('click', async () => {
+      const rawVal = apiKeyInput.value.trim();
+      if (!rawVal) {
+        showAiFeedback('Please enter an API key.', 'error');
+        return;
+      }
+
+      saveKeyBtn.disabled = true;
+      saveKeyBtn.textContent = 'Testing...';
+
+      try {
+        let testRes = { valid: true };
+        if (window.ErrorGuard && window.ErrorGuard.GoogleVision) {
+          testRes = await window.ErrorGuard.GoogleVision.testApiKey(rawVal);
         }
 
-        aiStatusPill.textContent = '🟢 Gemini Active';
-        aiStatusPill.className = 'ai-status-pill pill-active';
-        showAiFeedback('✅ Google Gemini Vision connected & saved!', 'success');
-      } else {
-        showAiFeedback(`❌ Invalid Key: ${testRes.message}`, 'error');
+        if (testRes.valid) {
+          if (window.ErrorGuard && window.ErrorGuard.Storage) {
+            await window.ErrorGuard.Storage.setGoogleApiKey(rawVal);
+          } else if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+            await new Promise(r => chrome.storage.local.set({ google_gemini_api_key: rawVal }, r));
+          }
+
+          if (aiStatusPill) {
+            aiStatusPill.textContent = '🟢 Gemini Active';
+            aiStatusPill.className = 'ai-status-pill pill-active';
+          }
+          showAiFeedback('✅ Google Gemini Vision connected & saved!', 'success');
+        } else {
+          showAiFeedback(`❌ Invalid Key: ${testRes.message}`, 'error');
+        }
+      } catch (err) {
+        showAiFeedback(`Error: ${err.message}`, 'error');
+      } finally {
+        saveKeyBtn.disabled = false;
+        saveKeyBtn.textContent = '⚡ Connect & Save';
       }
-    } catch (err) {
-      showAiFeedback(`Error: ${err.message}`, 'error');
-    } finally {
-      saveKeyBtn.disabled = false;
-      saveKeyBtn.textContent = '⚡ Connect & Save';
-    }
-  });
+    });
 
-  // Remove Key
-  removeKeyBtn.addEventListener('click', async () => {
-    if (window.ErrorGuard && window.ErrorGuard.Storage) {
-      await window.ErrorGuard.Storage.removeGoogleApiKey();
-    } else if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-      await new Promise(r => chrome.storage.local.remove(['google_gemini_api_key'], r));
-    }
+    // Remove Key
+    removeKeyBtn.addEventListener('click', async () => {
+      if (window.ErrorGuard && window.ErrorGuard.Storage) {
+        await window.ErrorGuard.Storage.removeGoogleApiKey();
+      } else if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        await new Promise(r => chrome.storage.local.remove(['google_gemini_api_key'], r));
+      }
 
-    apiKeyInput.value = '';
-    aiStatusPill.textContent = 'Offline Mode';
-    aiStatusPill.className = 'ai-status-pill pill-offline';
-    showAiFeedback('API key removed. Using offline Tesseract OCR.', 'success');
-  });
+      apiKeyInput.value = '';
+      if (aiStatusPill) {
+        aiStatusPill.textContent = 'Offline Mode';
+        aiStatusPill.className = 'ai-status-pill pill-offline';
+      }
+      showAiFeedback('API key removed. Using offline Tesseract OCR.', 'success');
+    });
+
+    loadAiSettings();
+  }
 
   // Initial load
   loadStatus();
-  loadAiSettings();
 });

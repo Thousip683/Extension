@@ -39,7 +39,7 @@ function loadEnv() {
 
 loadEnv();
 
-const PORT = parseInt(process.env.PORT || '5000', 10);
+const PORT = parseInt(process.env.PORT || '5001', 10);
 
 
 function getApiKey() {
@@ -245,10 +245,24 @@ const server = http.createServer(async (req, res) => {
   res.end(JSON.stringify({ error: 'Not Found' }));
 });
 
-server.listen(PORT, () => {
-  console.log(`\n=============================================================`);
-  console.log(`🛡️  Pre-Submission Error Guard - AI Vision Backend Running!`);
-  console.log(`📡 URL: http://localhost:${PORT}`);
-  console.log(`🔑 Gemini API Key Status: ${getApiKey() ? '✅ Configured' : '⚠️ Missing (set in backend/.env)'}`);
-  console.log(`=============================================================\n`);
+function startServer(portToUse) {
+  server.listen(portToUse, () => {
+    console.log(`\n=============================================================`);
+    console.log(`🛡️  Pre-Submission Error Guard - AI Vision Backend Running!`);
+    console.log(`📡 URL: http://localhost:${portToUse}`);
+    console.log(`🔑 Gemini API Key Status: ${getApiKey() ? '✅ Configured' : '⚠️ Missing (set in backend/.env)'}`);
+    console.log(`=============================================================\n`);
+  });
+}
+
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE' && PORT === 5000) {
+    console.warn(`[AI Backend] ⚠️ Port 5000 is in use (macOS AirPlay Receiver). Switching to port 5001 automatically...`);
+    startServer(5001);
+  } else {
+    console.error(`[AI Backend] Server listen error:`, err);
+    process.exit(1);
+  }
 });
+
+startServer(PORT);

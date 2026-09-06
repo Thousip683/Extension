@@ -25,6 +25,7 @@
   let extractedDocData = null;
   let latestReport = null;
   let debounceTimer = null;
+  let userHasCheckedErrors = false;
 
   async function init() {
     Logger.info('ContentScript', 'Pre-Submission Error Guard initializing on page...');
@@ -36,8 +37,8 @@
     // 2. Initialize In-Page UI Overlay
     Overlay.init();
 
-    // 3. Initial Scan and Listener Attachments
-    runEvaluation();
+    // 3. Initial Scan and Listener Attachments (Silent evaluation - do NOT show red alerts on blank form)
+    runEvaluation({ showAlerts: false });
     attachListeners();
 
     // 4. Listen for Extension Popup Messages
@@ -46,7 +47,8 @@
         if (request.action === 'GET_STATUS') {
           sendResponse(latestReport);
         } else if (request.action === 'TRIGGER_RESCAN') {
-          runEvaluation().then(rep => sendResponse(rep));
+          userHasCheckedErrors = true;
+          runEvaluation({ showAlerts: true }).then(rep => sendResponse(rep));
           return true; // async
         }
       });
@@ -65,7 +67,7 @@
     // MutationObserver to detect dynamically inserted form fields
     const observer = new MutationObserver(() => {
       clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(() => runEvaluation(), 300);
+      debounceTimer = setTimeout(() => runEvaluation({ showAlerts: userHasCheckedErrors }), 300);
     });
     observer.observe(document.body, { childList: true, subtree: true });
   }
@@ -74,7 +76,7 @@
     const target = e.target;
     if (target.matches('input, select, textarea')) {
       clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(() => runEvaluation(), 250);
+      debounceTimer = setTimeout(() => runEvaluation({ showAlerts: userHasCheckedErrors }), 250);
     }
   }
 
@@ -84,14 +86,15 @@
       if (target.files && target.files[0]) {
         currentFile = target.files[0];
         Logger.info('ContentScript', `File selected: ${target.files[0].name} (${target.files[0].size} bytes)`);
+        // AI document analysis starts immediately in the background
         await processUploadedFile(currentFile);
       } else {
         currentFile = null;
         extractedDocData = null;
-        await runEvaluation();
+        await runEvaluation({ showAlerts: userHasCheckedErrors });
       }
     } else if (target.matches('input, select, textarea')) {
-      await runEvaluation();
+      await runEvaluation({ showAlerts: userHasCheckedErrors });
     }
   }
 
@@ -104,14 +107,12 @@
     // 2. Image Quality & Blur Checks (Canvas API)
     const qualityIssues = await ImageQuality.analyze(file, fileRules);
 
-    // 3. Asynchronous OCR Pipeline
+    // 3. Asynchronous OCR & Background AI Vision Pipeline
+    Overlay.setAiProgress(10, 'Analyzing document in background...');
     let ocrResult = { text: '', confidence: 0 };
     try {
       ocrResult = await OcrEngine.extractText(file, (percent, msg) => {
-        const badgeStatus = document.getElementById('egBadgeStatus');
-        if (badgeStatus) {
-          badgeStatus.textContent = `OCR: ${percent}%`;
-        }
+        Overlay.setAiProgress(percent, msg);
       });
     } catch (err) {
       Logger.warn('ContentScript', 'OCR extraction issue', err);
@@ -120,6 +121,7 @@
     // 4. Structured Document Parsing
     extractedDocData = DocumentParser.parse(ocrResult.text, ocrResult.aiData);
     extractedDocData.ocrConfidence = ocrResult.confidence;
+    Overlay.setAiReady(extractedDocData);
 
     // ── Log Full OCR and Parsed Output to Browser Console ──
     console.log('================== [ErrorGuard OCR] RAW TEXT START ==================');
@@ -147,8 +149,12 @@
       Overlay.showAutoFillBanner(extractedDocData, () => applyAutoFill(extractedDocData));
     }
 
-    // 6. Re-run complete evaluation with newly extracted document data
-    await runEvaluation(fileIssues, qualityIssues);
+    // 6. Complete evaluation with newly extracted document data
+    await runEvaluation({
+      showAlerts: userHasCheckedErrors,
+      cachedFileIssues: fileIssues,
+      cachedQualityIssues: qualityIssues
+    });
   }
 
   function applyAutoFill(data) {
@@ -173,16 +179,33 @@
         item.field.dispatchEvent(new Event('change', { bubbles: true }));
       }
     }
-    runEvaluation();
+    runEvaluation({ showAlerts: userHasCheckedErrors });
   }
 
-  // Expose global re-evaluation trigger for manual refresh
-  window.ErrorGuard.reEvaluate = async function() {
-    Logger.info('ContentScript', 'Manual re-scan triggered by user.');
-    return await runEvaluation();
+  // Expose global re-evaluation trigger for manual refresh & on-demand inspection
+  window.ErrorGuard.reEvaluate = async function(opts = {}) {
+    const showAlerts = (opts && opts.showAlerts !== undefined) ? opts.showAlerts : true;
+    if (showAlerts) userHasCheckedErrors = true;
+    Logger.info('ContentScript', 'Manual re-scan triggered by user.', { showAlerts });
+    return await runEvaluation({ showAlerts, openDrawer: opts && opts.openDrawer });
   };
 
-  async function runEvaluation(cachedFileIssues = null, cachedQualityIssues = null) {
+  async function runEvaluation(options = {}) {
+    let cachedFileIssues = null;
+    let cachedQualityIssues = null;
+    let showAlerts = userHasCheckedErrors;
+    let openDrawer = false;
+
+    if (Array.isArray(options)) {
+      cachedFileIssues = options;
+      cachedQualityIssues = arguments[1] || null;
+    } else if (typeof options === 'object' && options !== null) {
+      if (options.showAlerts !== undefined) showAlerts = options.showAlerts;
+      if (options.openDrawer !== undefined) openDrawer = options.openDrawer;
+      cachedFileIssues = options.cachedFileIssues || null;
+      cachedQualityIssues = options.cachedQualityIssues || null;
+    }
+
     const scanResult = Detector.scan();
     const profile = RuleEngine.getProfile();
     const fileRules = RuleEngine.getFileRules();
@@ -359,11 +382,11 @@
     });
 
     // 5. Update In-Page UI Overlay
-    Overlay.update(latestReport);
+    Overlay.update(latestReport, { showAlerts, openDrawer });
 
-    // 5b. Show 1-Click Auto-Correct Chips for Mismatches
+    // 5b. Show 1-Click Auto-Correct Chips for Mismatches (only when error alerts are requested)
     Overlay.clearAutoCorrectChips();
-    if (extractedDocData) {
+    if (showAlerts && extractedDocData) {
       for (const issue of crossCheckIssues) {
         if (issue.code === 'NAME_MISMATCH' && extractedDocData.name) {
           const nameField = scanResult.fields.find(f => f.semantic?.type === 'FULL_NAME');
@@ -372,7 +395,7 @@
               nameField.field.value = extractedDocData.name;
               nameField.field.dispatchEvent(new Event('input', { bubbles: true }));
               nameField.field.dispatchEvent(new Event('change', { bubbles: true }));
-              runEvaluation();
+              runEvaluation({ showAlerts: true });
             });
           }
         }
@@ -385,7 +408,7 @@
               dobField.field.value = targetVal;
               dobField.field.dispatchEvent(new Event('input', { bubbles: true }));
               dobField.field.dispatchEvent(new Event('change', { bubbles: true }));
-              runEvaluation();
+              runEvaluation({ showAlerts: true });
             });
           }
         }
@@ -400,8 +423,9 @@
 
   // Pre-Submission Interceptor
   async function handleFormSubmit(e) {
-    // Run evaluation right before submitting
-    const report = await runEvaluation();
+    userHasCheckedErrors = true;
+    // Run evaluation right before submitting with visual alerts active
+    const report = await runEvaluation({ showAlerts: true });
 
     if (!report.isReady) {
       Logger.warn('SubmissionGuard', 'Blocked form submission due to blocking errors', report.issues.blocking);
@@ -421,7 +445,8 @@
 
     const btnText = (btn.textContent || btn.value || '').toLowerCase();
     if (btn.type === 'submit' || btnText.includes('submit') || btnText.includes('apply')) {
-      const report = await runEvaluation();
+      userHasCheckedErrors = true;
+      const report = await runEvaluation({ showAlerts: true });
       if (!report.isReady) {
         Logger.warn('SubmissionGuard', 'Blocked submit button click', report.issues.blocking);
         e.preventDefault();
