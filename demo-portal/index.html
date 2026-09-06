@@ -1,311 +1,667 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>National Scholarship & Certificate Verification Portal - Demo</title>
+  <title>GnanaBhumi - Post-Matric Scholarship & Fee Reimbursement Portal | Government of Andhra Pradesh</title>
   <link rel="stylesheet" href="style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Merriweather:wght@700&display=swap"
+    rel="stylesheet">
 </head>
+
 <body>
-  <!-- Top Govt Bar -->
+  <!-- 1. Indian National Flag Tricolor Accent Bar -->
+  <div class="national-tricolor-strip" aria-hidden="true"></div>
+
+  <!-- 2. Top Accessibility & Official Citizen Header Bar -->
   <div class="gov-topbar">
     <div class="container topbar-flex">
-      <span>🇮🇳 Government of Andhra Pradesh • Official Application Service</span>
-      <span class="topbar-links">
-        <a href="#help">Helpdesk: 1800-425-0000</a> | 
-        <a href="#guidelines">Guidelines</a>
-      </span>
+      <div class="topbar-identity">
+        <span class="flag-icon">🇮🇳</span>
+        <span>GOVERNMENT OF ANDHRA PRADESH • OFFICIAL DBT CITIZEN PORTAL | ఆంధ్రప్రదేశ్ ప్రభుత్వం</span>
+      </div>
+      <div class="topbar-accessibility">
+        <a href="#mainForm" class="skip-link">Skip to Main Content</a>
+        <span class="topbar-sep">|</span>
+        <span class="access-tools" title="Font Size Options">
+          <button type="button" class="access-btn" id="fontDecBtn" title="Decrease Font Size">A-</button>
+          <button type="button" class="access-btn" id="fontNormalBtn" title="Normal Font Size">A</button>
+          <button type="button" class="access-btn" id="fontIncBtn" title="Increase Font Size">A+</button>
+        </span>
+        <span class="topbar-sep">|</span>
+        <a href="#helpline" class="topbar-link"><span class="phone-ico">📞</span> Toll-Free: 1800-425-0000</a>
+        <span class="topbar-sep">|</span>
+        <span class="lang-selector">
+          <a href="#" class="lang-active">English</a> / <a href="#">తెలుగు</a> / <a href="#">हिन्दी</a>
+        </span>
+      </div>
     </div>
   </div>
 
-  <!-- Main Header -->
+  <!-- 3. Main Official Department Branding Header -->
   <header class="main-header">
     <div class="container header-content">
+      <!-- Left: Official State Emblem of India (Ashoka Lion Capital with Satyameva Jayate) -->
       <div class="logo-area">
-        <div class="emblem-circle">🏛️</div>
-        <div>
-          <h1>National Scholarship & Certificate Portal</h1>
-          <p class="subtitle">Higher Education & Welfare Department • Online Verification Service</p>
+        <div class="national-emblem" aria-label="State Emblem of India">
+          <svg width="60" height="72" viewBox="0 0 60 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- Lion Capital Silhouette Representation in Official Gov Gold -->
+            <path
+              d="M30 4C24 4 21 7 19 11C18 9 15 8 13 9C11 10 10 13 11 16C12 19 15 21 18 21C19 24 23 26 30 26C37 26 41 24 42 21C45 21 48 19 49 16C50 13 49 10 47 9C45 8 42 9 41 11C39 7 36 4 30 4Z"
+              fill="#C59B27" />
+            <path d="M22 26H38V34C38 38 34 40 30 40C26 40 22 38 22 34V26Z" fill="#C59B27" />
+            <!-- Abacus with Ashoka Chakra Wheel -->
+            <rect x="12" y="42" width="36" height="8" rx="2" fill="#0E387A" />
+            <circle cx="30" cy="46" r="3" fill="#FFFFFF" />
+            <circle cx="30" cy="46" r="3.5" stroke="#F59E0B" stroke-width="0.8" />
+            <path d="M30 42.5V49.5M26.5 46H33.5M27.5 43.5L32.5 48.5M32.5 43.5L27.5 48.5" stroke="#FFFFFF"
+              stroke-width="0.6" />
+            <!-- Base Plinth -->
+            <path d="M16 52H44V55C44 57 41 58 38 58H22C19 58 16 57 16 55V52Z" fill="#C59B27" />
+            <!-- Satyameva Jayate in Devanagari script representation -->
+            <text x="30" y="67" text-anchor="middle" font-family="'Merriweather', serif" font-size="6.5"
+              font-weight="bold" fill="#C59B27" letter-spacing="0.5">सत्यमेव जयते</text>
+          </svg>
+        </div>
+        <div class="header-titles">
+          <span class="gov-bilingual-tag">ఆంధ్రప్రదేశ్ ప్రభుత్వం • GOVERNMENT OF ANDHRA PRADESH</span>
+          <span class="dept-title">DEPARTMENT OF SOCIAL WELFARE & HIGHER EDUCATION</span>
+          <h1 class="portal-main-title">GNANA BHUMI - SCHOLARSHIP & DBT PORTAL</h1>
+          <p class="portal-tagline">Post-Matric Financial Assistance & Fee Reimbursement Scheme (JVD)</p>
         </div>
       </div>
-      <div class="portal-badge">
-        <span class="badge-status">● Live Demo Portal</span>
-        <span class="badge-id">Portal ID: AP-SCHOLAR-2026</span>
+
+      <!-- Right: Official Seals (Digital India & DBT Bharat) -->
+      <div class="header-right-badges">
+        <div class="official-seal">
+          <span class="seal-logo">🇮🇳</span>
+          <div class="seal-texts">
+            <span class="seal-primary">DBT Bharat</span>
+            <span class="seal-secondary">Direct Benefit Transfer</span>
+          </div>
+        </div>
+        <div class="official-seal digital-india-badge">
+          <div class="digital-icon">⚡</div>
+          <div class="seal-texts">
+            <span class="seal-primary">Digital India</span>
+            <span class="seal-secondary">Power To Empower</span>
+          </div>
+        </div>
       </div>
     </div>
   </header>
 
-  <!-- Hackathon Quick-Test Bar -->
-  <div class="test-panel-wrapper">
-    <div class="container">
-      <div class="test-panel">
-        <div class="test-panel-header">
-          <strong>⚡ Hackathon Live Demo Panel</strong>
-          <span>Click a scenario below to auto-populate the form & test document:</span>
-        </div>
-        <div class="scenario-buttons">
-          <button type="button" class="scenario-btn btn-success" id="loadScenarioValid">
-            ✅ 1. Perfect Match (Ready)
-          </button>
-          <button type="button" class="scenario-btn btn-warning" id="loadScenarioNameMismatch">
-            ⚠️ 2. Name Typo Mismatch
-          </button>
-          <button type="button" class="scenario-btn btn-danger" id="loadScenarioDobMismatch">
-            ❌ 3. DOB Mismatch
-          </button>
-          <button type="button" class="scenario-btn btn-danger" id="loadScenarioOversized">
-            📁 4. Oversized File (>2MB)
-          </button>
-          <button type="button" class="scenario-btn btn-warning" id="loadScenarioBlurry">
-            👁️ 5. Blurry Document
-          </button>
-          <button type="button" class="scenario-btn btn-secondary" id="loadScenarioMissing">
-            📝 6. Missing Fields
-          </button>
-          <button type="button" class="scenario-btn btn-reset" id="resetFormBtn">
-            🔄 Reset
-          </button>
-        </div>
+  <!-- 4. Official Mega-Navigation Bar (Classic Indian Gov Style) -->
+  <nav class="gov-navbar" aria-label="Portal Navigation">
+    <div class="container nav-container">
+      <ul class="nav-menu">
+        <li class="nav-item"><a href="#" class="nav-link">🏛️ Home</a></li>
+        <li class="nav-item"><a href="#" class="nav-link">About Scheme</a></li>
+        <li class="nav-item active"><a href="#" class="nav-link">Online Registration</a></li>
+        <li class="nav-item"><a href="#" class="nav-link">Eligibility & Guidelines</a></li>
+        <li class="nav-item"><a href="#" class="nav-link">College / Institute Search</a></li>
+        <li class="nav-item"><a href="#" class="nav-link">Application Status</a></li>
+        <li class="nav-item"><a href="#" class="nav-link">Grievances</a></li>
+        <li class="nav-item"><a href="#" class="nav-link">Helpdesk & FAQ</a></li>
+      </ul>
+
+    </div>
+  </nav>
+
+  <!-- 5. Flash News & Ticker Bar -->
+  <div class="gov-ticker-bar">
+    <div class="container ticker-flex">
+      <div class="ticker-badge">
+        <span class="ticker-pulse">●</span> FLASH NEWS / తాజా వార్తలు
+      </div>
+      <div class="ticker-content">
+        <span class="ticker-text">
+          📢 Fresh and Renewal Applications for Post-Matric Scholarships (JVD) for Academic Year 2026–27 are now open.
+          As per Govt Memo No. 1294/SW/2026, seeding of Bank Account with Aadhaar & PAN is mandatory for DBT
+          disbursements.
+        </span>
       </div>
     </div>
   </div>
 
-  <!-- Main Content Form -->
-  <main class="container main-layout">
+  <!-- 6. Main Application Content Area -->
+  <main class="container main-layout" id="mainForm">
     <div class="form-container">
-      <div class="form-header">
-        <h2>Post-Matric Scholarship & Fee Reimbursement Application</h2>
-        <p class="form-desc">
-          Please provide accurate details matching your original certificates. Uploaded documents are validated against your entered information before final submission.
-        </p>
+      <!-- Official Application Header & Tracking Meta Block -->
+      <div class="form-header-gov">
+        <div class="form-gov-meta-table">
+          <div class="meta-cell">
+            <span class="meta-k">Application Form Code</span>
+            <span class="meta-v">FORM JVD-01 (AY 2026–27)</span>
+          </div>
+          <div class="meta-cell">
+            <span class="meta-k">Service Classification</span>
+            <span class="meta-v">Post-Matric Scholarship & Fee Reimbursement</span>
+          </div>
+          <div class="meta-cell">
+            <span class="meta-k">Department / Authority</span>
+            <span class="meta-v">Directorate of Social Welfare, AP</span>
+          </div>
+          <div class="meta-cell">
+            <span class="meta-k">Application Date</span>
+            <span class="meta-v">06-Sep-2026 (Live Session)</span>
+          </div>
+        </div>
+
+        <div class="form-title-block">
+          <h2>Application for Post-Matric Education Assistance & DBT Reimbursement</h2>
+          <p class="form-desc-gov">
+            (Read instructions carefully before filling. Fields marked with <span class="required">*</span> are strictly
+            mandatory. All information will be verified against official UIDAI, Income Tax Department, and Revenue
+            Records.)
+          </p>
+        </div>
+      </div>
+
+      <!-- Formal Gov Notice & Guidelines Box -->
+      <div class="gov-statutory-notice">
+        <div class="notice-icon">⚠️</div>
+        <div class="notice-body">
+          <strong>STATUTORY ADVISORY UNDER AADHAAR ACT, 2016 & DBT RULES:</strong>
+          <ul>
+            <li>Your <strong>Full Name</strong> and <strong>Date of Birth</strong> must correspond strictly with your
+              Aadhaar Card and Secondary School Certificate.</li>
+            <li>Uploaded documents must be legible, original scans (max 2 MB in PDF/PNG/JPG). Tampered, truncated, or
+              unreadable documents will lead to summary rejection.</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Government Progress Steps Bar -->
+      <div class="gov-steps-indicator">
+        <div class="step-item step-completed">
+          <span class="step-circle">1</span>
+          <span class="step-label">Applicant Info</span>
+        </div>
+        <div class="step-connector active"></div>
+        <div class="step-item step-active">
+          <span class="step-circle">2</span>
+          <span class="step-label">Aadhaar & PAN Identity</span>
+        </div>
+        <div class="step-connector active"></div>
+        <div class="step-item step-active">
+          <span class="step-circle">3</span>
+          <span class="step-label">Document Uploads</span>
+        </div>
+        <div class="step-connector"></div>
+        <div class="step-item">
+          <span class="step-circle">4</span>
+          <span class="step-label">Declaration & Submit</span>
+        </div>
       </div>
 
       <!-- Submission Status Message Container -->
       <div id="statusAlert" class="status-alert hidden"></div>
 
       <form id="scholarshipForm" novalidate>
-        <!-- Personal Details Section -->
+        <!-- ========================================================
+             SECTION 1: APPLICANT PERSONAL INFORMATION
+             ======================================================== -->
         <fieldset class="form-section">
           <legend class="section-title">
-            <span class="section-num">1</span> Applicant Personal Information
+            <span class="section-num">1</span> SECTION I: APPLICANT PERSONAL & DEMOGRAPHIC PARTICULARS
           </legend>
 
           <div class="form-grid">
             <div class="form-group">
               <label for="fullName">
-                Full Name (As per SSC / Certificate) <span class="required">*</span>
+                1.1 Full Name of Applicant (As per Aadhaar Card / SSC Records) <span class="required">*</span>
               </label>
-              <input 
-                type="text" 
-                id="fullName" 
-                name="full_name" 
-                placeholder="e.g. Siva Kumar" 
-                required
-                autocomplete="name"
-              >
-              <span class="field-hint">Spelling must exactly match your uploaded certificate.</span>
+              <input type="text" id="fullName" name="full_name" placeholder="e.g. Siva Kumar" required
+                autocomplete="name">
+              <span class="field-hint">Note: Spelling must match your uploaded Aadhaar card exactly.</span>
             </div>
 
             <div class="form-group">
-              <label for="dob">
-                Date of Birth <span class="required">*</span>
+              <label for="fatherName">
+                1.2 Father's / Guardian's Full Name <span class="required">*</span>
               </label>
-              <input 
-                type="date" 
-                id="dob" 
-                name="dob" 
-                required
-                autocomplete="bday"
-              >
-              <span class="field-hint">Format: DD/MM/YYYY</span>
+              <input type="text" id="fatherName" name="father_name" placeholder="e.g. Ramesh Kumar" required>
+              <span class="field-hint">As recorded on your SSC marks sheet or official certificates.</span>
             </div>
           </div>
 
           <div class="form-grid">
             <div class="form-group">
-              <label for="certificateNo">
-                Income / Caste Certificate Number <span class="required">*</span>
+              <label for="dob">
+                1.3 Date of Birth <span class="required">*</span>
               </label>
-              <input 
-                type="text" 
-                id="certificateNo" 
-                name="certificate_no" 
-                placeholder="e.g. AP123456" 
-                required
-              >
-              <span class="field-hint">Issued by Revenue Department / Tahsildar</span>
+              <input type="date" id="dob" name="dob" required autocomplete="bday">
+              <span class="field-hint">Must match Date of Birth on Aadhaar card (DD/MM/YYYY).</span>
             </div>
 
             <div class="form-group">
-              <label for="category">
-                Social Category / Community <span class="required">*</span>
+              <label for="gender">
+                1.4 Gender <span class="required">*</span>
               </label>
-              <select id="category" name="category" required>
-                <option value="">-- Select Category --</option>
-                <option value="General">General / OC</option>
-                <option value="BC-A">Backward Class (BC-A)</option>
-                <option value="BC-B">Backward Class (BC-B)</option>
-                <option value="SC">Scheduled Caste (SC)</option>
-                <option value="ST">Scheduled Tribe (ST)</option>
-                <option value="EWS">Economically Weaker Section (EWS)</option>
+              <select id="gender" name="gender" required>
+                <option value="">-- Select Gender --</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Transgender">Transgender</option>
               </select>
             </div>
           </div>
 
           <div class="form-grid">
             <div class="form-group">
-              <label for="email">
-                Email Address <span class="required">*</span>
+              <label for="category">
+                1.5 Social Category / Community <span class="required">*</span>
               </label>
-              <input 
-                type="email" 
-                id="email" 
-                name="email" 
-                placeholder="applicant@example.com" 
-                required
-                autocomplete="email"
-              >
+              <select id="category" name="category" required>
+                <option value="">-- Select Category --</option>
+                <option value="General">General / Open Competition (OC)</option>
+                <option value="BC-A">Backward Class Group A (BC-A)</option>
+                <option value="BC-B">Backward Class Group B (BC-B)</option>
+                <option value="BC-C">Backward Class Group C (BC-C)</option>
+                <option value="BC-D">Backward Class Group D (BC-D)</option>
+                <option value="BC-E">Backward Class Group E (BC-E)</option>
+                <option value="SC">Scheduled Caste (SC)</option>
+                <option value="ST">Scheduled Tribe (ST)</option>
+                <option value="EWS">Economically Weaker Section (EWS)</option>
+              </select>
             </div>
 
             <div class="form-group">
-              <label for="phone">
-                Mobile Number <span class="required">*</span>
+              <label for="certificateNo">
+                1.6 Caste / Income Certificate Number (MeeSeva ID) <span class="required">*</span>
               </label>
-              <input 
-                type="tel" 
-                id="phone" 
-                name="phone" 
-                placeholder="9876543210" 
-                pattern="[0-9]{10}"
-                required
-                autocomplete="tel"
-              >
+              <input type="text" id="certificateNo" name="certificate_no" placeholder="e.g. AP123456" required>
+              <span class="field-hint">Issued by Revenue Department / Tahsildar</span>
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="phone">
+                1.7 Aadhaar-Linked Mobile Number <span class="required">*</span>
+              </label>
+              <input type="tel" id="phone" name="phone" placeholder="9876543210" pattern="[0-9]{10}" maxlength="10"
+                required autocomplete="tel">
+              <span class="field-hint">10-digit mobile number registered for Aadhaar OTP authentication.</span>
+            </div>
+
+            <div class="form-group">
+              <label for="email">
+                1.8 Active Email Address <span class="required">*</span>
+              </label>
+              <input type="email" id="email" name="email" placeholder="applicant@domain.gov.in" required
+                autocomplete="email">
+              <span class="field-hint">Official application acknowledgement and alerts will be sent here.</span>
+            </div>
+          </div>
+
+          <!-- Optional Demographic Fields -->
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="motherName">
+                1.9 Mother's Full Name <span class="optional-tag">(Optional)</span>
+              </label>
+              <input type="text" id="motherName" name="mother_name" placeholder="e.g. Lakshmi Devi">
+              <span class="field-hint">As recorded on family ration card / educational records.</span>
+            </div>
+
+            <div class="form-group">
+              <label for="alternatePhone">
+                1.10 Alternate Mobile Number <span class="optional-tag">(Optional)</span>
+              </label>
+              <input type="tel" id="alternatePhone" name="alternate_phone" placeholder="9876501234" pattern="[0-9]{10}"
+                maxlength="10">
+              <span class="field-hint">Backup contact number of parent / guardian.</span>
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="familyIncome">
+                1.11 Annual Family Income (INR) <span class="optional-tag">(Optional)</span>
+              </label>
+              <input type="number" id="familyIncome" name="family_income" placeholder="e.g. 150000" min="0" step="1000">
+              <span class="field-hint">Annual family income as per official Tahsildar certificate.</span>
+            </div>
+
+            <div class="form-group">
+              <label for="pwdStatus">
+                1.12 Differently Abled / PwD Status <span class="optional-tag">(Optional)</span>
+              </label>
+              <select id="pwdStatus" name="pwd_status">
+                <option value="No">No / Not Applicable</option>
+                <option value="Locomotor">Locomotor Disability</option>
+                <option value="Visual">Visual Impairment</option>
+                <option value="Hearing">Hearing Impairment</option>
+                <option value="Multiple">Multiple Disabilities</option>
+              </select>
+              <span class="field-hint">Eligible for special government conveyance allowance.</span>
             </div>
           </div>
         </fieldset>
 
-        <!-- Document Upload Section -->
+        <!-- ========================================================
+             SECTION 2: STATUTORY IDENTIFICATION & DBT TAX CREDENTIALS
+             ======================================================== -->
         <fieldset class="form-section">
           <legend class="section-title">
-            <span class="section-num">2</span> Supporting Document Upload
+            <span class="section-num">2</span> SECTION II: STATUTORY IDENTIFICATION & DBT TAX CREDENTIALS (AADHAAR &
+            PAN)
           </legend>
 
-          <div class="form-group">
-            <label for="certificateUpload">
-              Upload Original Certificate (PNG, JPG, PDF) <span class="required">*</span>
-            </label>
-            
-            <div class="upload-dropzone" id="dropzone">
+          <div class="gov-infobox">
+            <div class="gov-infobox-icon">🏛️</div>
+            <div class="gov-infobox-text">
+              <strong>DBT Compliance Mandate:</strong> Direct Benefit Transfer guidelines require scholarship subsidies
+              to be credited solely to an Aadhaar-seeded bank account linked with PAN. Please ensure card numbers are
+              entered without typographical errors.
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="aadhaarNumber">
+                2.1 Aadhaar Card Number (UIDAI 12-Digit UID) <span class="required">*</span>
+              </label>
+              <input type="text" id="aadhaarNumber" name="aadhaar_number" placeholder="e.g. 1234 5678 9012"
+                maxlength="14" required autocomplete="off">
+              <span class="field-hint">12-digit Unique Identification Number printed on Aadhaar card.</span>
+            </div>
+
+            <div class="form-group">
+              <label for="panNumber">
+                2.2 Permanent Account Number (PAN) <span class="required">*</span>
+              </label>
+              <input type="text" id="panNumber" name="pan_number" placeholder="e.g. ABCDE1234F" maxlength="10"
+                style="text-transform: uppercase;" required autocomplete="off">
+              <span class="field-hint">10-character alphanumeric PAN issued by Income Tax Department.</span>
+            </div>
+          </div>
+
+          <!-- Optional DBT Bank Details -->
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="bankAccountNo">
+                2.3 DBT Bank Account Number <span class="optional-tag">(Optional)</span>
+              </label>
+              <input type="text" id="bankAccountNo" name="bank_account_no" placeholder="e.g. 123456789012"
+                maxlength="18">
+              <span class="field-hint">Aadhaar-seeded savings account for direct scholarship disbursement.</span>
+            </div>
+
+            <div class="form-group">
+              <label for="ifscCode">
+                2.4 Bank Branch IFSC Code <span class="optional-tag">(Optional)</span>
+              </label>
+              <input type="text" id="ifscCode" name="ifsc_code" placeholder="e.g. SBIN0001234" maxlength="11"
+                style="text-transform: uppercase;">
+              <span class="field-hint">11-character Indian Financial System Code (e.g. SBIN0001234).</span>
+            </div>
+          </div>
+        </fieldset>
+
+        <!-- ========================================================
+             SECTION 3: MANDATORY DOCUMENT SCANS & VERIFICATION PROOFS
+             ======================================================== -->
+        <fieldset class="form-section">
+          <legend class="section-title">
+            <span class="section-num">3</span> SECTION III: MANDATORY DOCUMENT SCANS & VERIFICATION PROOFS
+          </legend>
+
+          <!-- Upload 1: Aadhaar Card Document -->
+          <div class="doc-upload-block">
+            <div class="doc-upload-header">
+              <span class="doc-badge">DOCUMENT 1</span>
+              <label for="aadhaarUpload" class="doc-label">
+                Upload Aadhaar Card (Front & Back or e-Aadhaar PDF) <span class="required">*</span>
+              </label>
+            </div>
+
+            <div class="upload-dropzone" id="dropzoneAadhaar">
               <div class="dropzone-inner">
-                <div class="upload-icon">📄</div>
+                <div class="upload-icon">🆔</div>
                 <div class="upload-instructions">
-                  <strong>Click to browse</strong> or drag & drop certificate here
-                  <p class="upload-rules">Maximum size: <strong>2 MB</strong> • Minimum resolution: <strong>400x300 px</strong></p>
+                  <strong>Click to browse</strong> or drag & drop Aadhaar file here
+                  <p class="upload-rules">Allowed formats: <strong>PDF, PNG, JPEG</strong> • Maximum file size:
+                    <strong>2 MB</strong>
+                  </p>
                 </div>
-                <input 
-                  type="file" 
-                  id="certificateUpload" 
-                  name="certificate_file" 
-                  accept="image/png, image/jpeg, application/pdf"
-                  required
-                >
+                <input type="file" id="aadhaarUpload" name="aadhaar_file"
+                  accept="image/png, image/jpeg, application/pdf" required>
               </div>
             </div>
 
-            <!-- Uploaded File Preview Info -->
-            <div id="filePreview" class="file-preview hidden">
+            <div id="filePreviewAadhaar" class="file-preview hidden">
+              <div class="file-preview-info">
+                <span class="file-icon">📄</span>
+                <div class="file-meta">
+                  <span id="previewNameAadhaar" class="file-name">aadhaar_card.pdf</span>
+                  <span id="previewSizeAadhaar" class="file-size">180 KB</span>
+                </div>
+              </div>
+              <button type="button" id="removeAadhaarBtn" class="remove-file-btn" title="Remove Aadhaar file">✕</button>
+            </div>
+          </div>
+
+          <!-- Upload 2: PAN Card Document -->
+          <div class="doc-upload-block">
+            <div class="doc-upload-header">
+              <span class="doc-badge">DOCUMENT 2</span>
+              <label for="panUpload" class="doc-label">
+                Upload PAN Card Copy <span class="required">*</span>
+              </label>
+            </div>
+
+            <div class="upload-dropzone" id="dropzonePan">
+              <div class="dropzone-inner">
+                <div class="upload-icon">💳</div>
+                <div class="upload-instructions">
+                  <strong>Click to browse</strong> or drag & drop PAN Card copy here
+                  <p class="upload-rules">Allowed formats: <strong>PDF, PNG, JPEG</strong> • Maximum file size:
+                    <strong>2 MB</strong>
+                  </p>
+                </div>
+                <input type="file" id="panUpload" name="pan_file" accept="image/png, image/jpeg, application/pdf"
+                  required>
+              </div>
+            </div>
+
+            <div id="filePreviewPan" class="file-preview hidden">
+              <div class="file-preview-info">
+                <span class="file-icon">📄</span>
+                <div class="file-meta">
+                  <span id="previewNamePan" class="file-name">pan_card.jpg</span>
+                  <span id="previewSizePan" class="file-size">120 KB</span>
+                </div>
+              </div>
+              <button type="button" id="removePanBtn" class="remove-file-btn" title="Remove PAN file">✕</button>
+            </div>
+          </div>
+
+          <!-- Upload 3: Income / Caste Certificate -->
+          <div class="doc-upload-block">
+            <div class="doc-upload-header">
+              <span class="doc-badge">DOCUMENT 3</span>
+              <label for="certificateUpload" class="doc-label">
+                Upload Original Income / Caste Certificate <span class="required">*</span>
+              </label>
+            </div>
+
+            <div class="upload-dropzone" id="dropzoneCert">
+              <div class="dropzone-inner">
+                <div class="upload-icon">📜</div>
+                <div class="upload-instructions">
+                  <strong>Click to browse</strong> or drag & drop official certificate here
+                  <p class="upload-rules">Allowed formats: <strong>PDF, PNG, JPEG</strong> • Maximum file size:
+                    <strong>2 MB</strong>
+                  </p>
+                </div>
+                <input type="file" id="certificateUpload" name="certificate_file"
+                  accept="image/png, image/jpeg, application/pdf" required>
+              </div>
+            </div>
+
+            <div id="filePreviewCert" class="file-preview hidden">
               <div class="file-preview-info">
                 <span class="file-icon">📑</span>
                 <div class="file-meta">
-                  <span id="previewName" class="file-name">document.png</span>
-                  <span id="previewSize" class="file-size">150 KB</span>
+                  <span id="previewNameCert" class="file-name">certificate.png</span>
+                  <span id="previewSizeCert" class="file-size">150 KB</span>
                 </div>
               </div>
-              <button type="button" id="removeFileBtn" class="remove-file-btn" title="Remove file">✕</button>
+              <button type="button" id="removeCertBtn" class="remove-file-btn"
+                title="Remove Certificate file">✕</button>
             </div>
           </div>
         </fieldset>
 
-        <!-- Declaration Section -->
+        <!-- ========================================================
+             SECTION 4: STATUTORY DECLARATION & CONSENT
+             ======================================================== -->
         <fieldset class="form-section">
           <legend class="section-title">
-            <span class="section-num">3</span> Self-Declaration & Consent
+            <span class="section-num">4</span> SECTION IV: STATUTORY UNDERTAKING & LEGAL CONSENT
           </legend>
+
+          <div class="checkbox-group" style="margin-bottom: 0.75rem;">
+            <input type="checkbox" id="aadhaarConsent" name="aadhaar_consent" required>
+            <label for="aadhaarConsent">
+              <strong>Consent for Aadhaar Authentication (Section 7, Aadhaar Act 2016):</strong> I hereby voluntarily
+              submit my Aadhaar number and give consent to the Department of Social Welfare & Higher Education,
+              Government of Andhra Pradesh to use my Aadhaar credentials for e-KYC authentication and Direct Benefit
+              Transfer (DBT) verification.
+            </label>
+          </div>
 
           <div class="checkbox-group">
             <input type="checkbox" id="declaration" name="declaration" required>
             <label for="declaration">
-              I hereby declare that all details entered above and the uploaded certificate are genuine and belong to me. I understand that any discrepancy or mismatched information will result in immediate disqualification of this application.
+              <strong>Solemn Declaration by Applicant:</strong> I hereby declare that all particulars entered in this
+              application and the attached document scans are true, correct, and complete to the best of my knowledge. I
+              understand that submitting fraudulent details or mismatched certificates constitutes a criminal offense
+              under IPC Section 420/468 and will result in permanent blacklisting.
             </label>
           </div>
         </fieldset>
 
-        <!-- Submit Button Area -->
+        <!-- ========================================================
+             SECTION 5: SECURITY CAPTCHA VERIFICATION
+             ======================================================== -->
+        <fieldset class="form-section captcha-section">
+          <legend class="section-title">
+            <span class="section-num">5</span> SECTION V: SECURITY CAPTCHA VERIFICATION
+          </legend>
+
+          <div class="captcha-box-wrapper">
+            <div class="captcha-display-area">
+              <div class="captcha-badge" id="captchaText">7 B X 9 K</div>
+              <button type="button" class="captcha-refresh-btn" id="captchaRefreshBtn"
+                title="Refresh Captcha">🔄</button>
+              <button type="button" class="captcha-audio-btn" id="captchaAudioBtn" title="Audio Captcha">🔊</button>
+            </div>
+            <div class="captcha-input-area">
+              <label for="captchaInput">Enter Security Code Shown Above <span class="required">*</span></label>
+              <input type="text" id="captchaInput" name="captcha_input" placeholder="Enter 5-character Captcha"
+                maxlength="6" required autocomplete="off">
+            </div>
+          </div>
+        </fieldset>
+
+        <!-- Form Submission Actions -->
         <div class="form-actions">
           <button type="submit" id="submitBtn" class="btn-submit">
-            🛡️ Submit Application
+            🏛️ SUBMIT OFFICIAL APPLICATION
           </button>
           <button type="button" id="saveDraftBtn" class="btn-secondary-action">
-            Save as Draft
+            Save Application Draft
+          </button>
+          <button type="button" id="resetFormBtn" class="btn-secondary-action" style="margin-left: auto;">
+            Reset Form
           </button>
         </div>
       </form>
     </div>
+  </main>
 
-    <!-- Sidebar with Rules & Sample Docs -->
-    <aside class="sidebar">
-      <div class="sidebar-card">
-        <h3>📋 Portal Submission Rules</h3>
-        <ul class="rules-list">
-          <li><strong>Full Name:</strong> Must match uploaded certificate exactly.</li>
-          <li><strong>DOB:</strong> Verified against certified birth date.</li>
-          <li><strong>Certificate:</strong> Clear readable copy required.</li>
-          <li><strong>Allowed Types:</strong> PNG, JPG, or PDF.</li>
-          <li><strong>Size Limit:</strong> Max 2 MB (2,048 KB).</li>
-          <li><strong>Readability:</strong> Scans must be sharp and legible.</li>
+  <!-- 7. Official 4-Column Government Portal Footer (NIC Format) -->
+  <footer class="main-footer">
+    <div class="container footer-top-grid">
+      <!-- Col 1: Portal Quick Links -->
+      <div class="footer-col">
+        <h4>Website Policies & RTI</h4>
+        <ul class="footer-list">
+          <li><a href="#policies">Website Policies & Guidelines</a></li>
+          <li><a href="#terms">Terms & Conditions</a></li>
+          <li><a href="#privacy">Privacy Policy</a></li>
+          <li><a href="#hyperlink">Hyperlinking Policy</a></li>
+          <li><a href="#copyright">Copyright Policy</a></li>
+          <li><a href="#rti">Right to Information (RTI) Act</a></li>
         </ul>
       </div>
 
-      <div class="sidebar-card">
-        <h3>📁 Available Test Documents</h3>
-        <p class="sidebar-desc">You can directly download or test with these pre-generated synthetic certificates:</p>
-        <div class="test-doc-links">
-          <a href="test-docs/valid_certificate.png" download class="doc-link valid">
-            <span>📄 Valid Certificate</span>
-            <small>Siva Kumar • 12/05/2005</small>
-          </a>
-          <a href="test-docs/name_mismatch.png" download class="doc-link warning">
-            <span>📄 Name Mismatch</span>
-            <small>Siva Kumarr (Typo)</small>
-          </a>
-          <a href="test-docs/dob_mismatch.png" download class="doc-link danger">
-            <span>📄 DOB Mismatch</span>
-            <small>18/09/2004</small>
-          </a>
-          <a href="test-docs/blurry_cert.png" download class="doc-link warning">
-            <span>📄 Blurry Certificate</span>
-            <small>Low contrast & blur</small>
-          </a>
-          <a href="test-docs/oversized_doc.png" download class="doc-link danger">
-            <span>📄 Oversized Document</span>
-            <small>> 2 MB limit</small>
-          </a>
+      <!-- Col 2: Government Portals -->
+      <div class="footer-col">
+        <h4>Related Government Portals</h4>
+        <ul class="footer-list">
+          <li><a href="https://india.gov.in" target="_blank" rel="noopener">National Portal of India (india.gov.in)</a>
+          </li>
+          <li><a href="https://ap.gov.in" target="_blank" rel="noopener">Government of Andhra Pradesh Portal</a></li>
+          <li><a href="https://dbtbharat.gov.in" target="_blank" rel="noopener">DBT Bharat Portal (Govt of India)</a>
+          </li>
+          <li><a href="https://meity.gov.in" target="_blank" rel="noopener">Ministry of Electronics & IT (MeitY)</a>
+          </li>
+          <li><a href="https://uidai.gov.in" target="_blank" rel="noopener">UIDAI Official Portal</a></li>
+          <li><a href="https://digitalindia.gov.in" target="_blank" rel="noopener">Digital India Portal</a></li>
+        </ul>
+      </div>
+
+      <!-- Col 3: Nodal Office & Helpdesk -->
+      <div class="footer-col">
+        <h4>Nodal Directorate & Helpdesk</h4>
+        <p class="office-address">
+          Commissionerate of Social Welfare,<br>
+          TG Plaza, Tadepalli, Guntur District,<br>
+          Andhra Pradesh, PIN - 522501.<br>
+          <strong>Toll-Free Helpline:</strong> 1800-425-0000<br>
+          <strong>Official Support:</strong> jnanabhumi.ap@gov.in
+        </p>
+      </div>
+
+      <!-- Col 4: Compliance & Security Seals -->
+      <div class="footer-col">
+        <h4>Security & Compliance Standards</h4>
+        <p class="compliance-desc">
+          This portal strictly adheres to the <em>Guidelines for Indian Government Websites (GIGW)</em> and is ISO 27001
+          certified.
+        </p>
+        <div class="gov-badges-row">
+          <span class="footer-badge">STQC Audited</span>
+          <span class="footer-badge">GIGW Compliant</span>
+          <span class="footer-badge">NIC Cloud Hosted</span>
+          <span class="footer-badge">TLS 1.3 Encrypted</span>
         </div>
       </div>
-    </aside>
-  </main>
+    </div>
 
-  <!-- Footer -->
-  <footer class="main-footer">
-    <div class="container footer-content">
-      <p>© 2026 Government of Andhra Pradesh. All rights reserved. Designed for Pre-Submission Error Guard Verification.</p>
-      <p class="disclaimer">Demo environment for InnovX-26 Problem Statement 2: Pre-Submission Error Guard for Official Forms.</p>
+    <div class="container footer-bottom-strip">
+      <div class="footer-credit">
+        Website Designed, Developed, and Hosted by <strong>National Informatics Centre (NIC)</strong>, Ministry of
+        Electronics & Information Technology, Government of India.
+      </div>
+      <div class="footer-meta">
+        <span>Content Owned by <strong>Department of Social Welfare</strong>, Govt of Andhra Pradesh</span> •
+        <span>Last Updated: <strong>06-Sep-2026</strong></span> •
+        <span>Visitor Counter: <strong>24,892,104</strong></span>
+      </div>
     </div>
   </footer>
 
   <script src="demo.js"></script>
 </body>
+
 </html>

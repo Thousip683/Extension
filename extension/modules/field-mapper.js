@@ -24,6 +24,16 @@
       autocomplete: [],
       types: ['text']
     },
+    AADHAAR_NUMBER: {
+      regex: /(aadhaar|aadhar|uidai|uid[_\-\s]?(no|num|number)|uid)/i,
+      autocomplete: [],
+      types: ['text', 'tel', 'number']
+    },
+    PAN_NUMBER: {
+      regex: /(pan[_\-\s]?(no|num|number|card)|tax[_\-\s]?id)/i,
+      autocomplete: [],
+      types: ['text']
+    },
     CATEGORY: {
       regex: /(category|community|caste|social[_\-\s]?status)/i,
       autocomplete: [],

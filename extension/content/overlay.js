@@ -324,9 +324,9 @@
       let html = `
         <div class="eg-status-banner ${report.isReady ? 'eg-banner-ready' : 'eg-banner-error'}">
           <h4>${report.status}</h4>
-          <p>${report.isReady 
-            ? 'All form values, document constraints, and identity cross-checks have passed.' 
-            : `${report.issues.blocking.length} blocking issue(s) need your attention before submitting.`}
+          <p>${report.isReady
+          ? 'All form values, document constraints, and identity cross-checks have passed.'
+          : `${report.issues.blocking.length} blocking issue(s) need your attention before submitting.`}
           </p>
         </div>
 
@@ -474,8 +474,8 @@
       banner.className = 'eg-autofill-banner';
 
       const typeName = docData.docType === 'AADHAAR' ? 'Aadhaar Card' :
-                       docData.docType === 'PAN' ? 'PAN Card' :
-                       docData.docType === 'CASTE_CERTIFICATE' ? 'Caste Certificate' : 'Official Document';
+        docData.docType === 'PAN' ? 'PAN Card' :
+          docData.docType === 'CASTE_CERTIFICATE' ? 'Caste Certificate' : 'Official Document';
 
       banner.innerHTML = `
         <div class="eg-autofill-header">

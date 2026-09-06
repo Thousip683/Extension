@@ -178,6 +178,16 @@
         item.field.dispatchEvent(new Event('input', { bubbles: true }));
         item.field.dispatchEvent(new Event('change', { bubbles: true }));
       }
+      if (item.semantic.type === 'AADHAAR_NUMBER' && (data.aadhaarNo || (data.docType === 'AADHAAR' && data.certificateNo))) {
+        item.field.value = data.aadhaarNo || data.certificateNo;
+        item.field.dispatchEvent(new Event('input', { bubbles: true }));
+        item.field.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+      if (item.semantic.type === 'PAN_NUMBER' && (data.panNo || (data.docType === 'PAN' && data.certificateNo))) {
+        item.field.value = data.panNo || data.certificateNo;
+        item.field.dispatchEvent(new Event('input', { bubbles: true }));
+        item.field.dispatchEvent(new Event('change', { bubbles: true }));
+      }
     }
     runEvaluation({ showAlerts: userHasCheckedErrors });
   }
@@ -218,6 +228,8 @@
         if (item.semantic.type === 'FULL_NAME') formData.full_name = item.value;
         if (item.semantic.type === 'DOB') formData.dob = item.value;
         if (item.semantic.type === 'CERTIFICATE_NUMBER') formData.certificate_no = item.value;
+        if (item.semantic.type === 'AADHAAR_NUMBER') formData.aadhaar_no = item.value;
+        if (item.semantic.type === 'PAN_NUMBER') formData.pan_no = item.value;
         if (item.semantic.type === 'DECLARATION') formData.declaration = item.field.checked;
         if (item.semantic.type === 'FILE_UPLOAD') {
           hasFileInput = true;
@@ -356,6 +368,52 @@
               message: `Certificate/ID number "${formData.certificate_no}" was not found on the uploaded document.`,
               fix: 'Double check the document number entered in the form.'
             });
+          }
+        }
+      }
+
+      // Check C1: Aadhaar Number Cross-Check
+      if (formData.aadhaar_no) {
+        const docAadhaar = extractedDocData.aadhaarNo || (extractedDocData.docType === 'AADHAAR' ? extractedDocData.certificateNo : null);
+        if (docAadhaar) {
+          const certComp = Matcher.compareIdentifier(formData.aadhaar_no, docAadhaar);
+          if (!certComp.match) {
+            const normAadhaar = Normalize.identifier(formData.aadhaar_no);
+            const normDocAadhaar = Normalize.identifier(docAadhaar);
+            if (normAadhaar !== normDocAadhaar) {
+              crossCheckIssues.push({
+                code: 'IDENTIFIER_MISMATCH',
+                field: 'AADHAAR_NUMBER',
+                severity: 'BLOCKING',
+                message: `Aadhaar Number mismatch: Form specifies "${formData.aadhaar_no}", but verified Aadhaar document has "${docAadhaar}".`,
+                formValue: formData.aadhaar_no,
+                documentValue: docAadhaar,
+                fix: 'Enter the 12-digit Aadhaar number matching your uploaded Aadhaar card.'
+              });
+            }
+          }
+        }
+      }
+
+      // Check C2: PAN Card Number Cross-Check
+      if (formData.pan_no) {
+        const docPan = extractedDocData.panNo || (extractedDocData.docType === 'PAN' ? extractedDocData.certificateNo : null);
+        if (docPan) {
+          const certComp = Matcher.compareIdentifier(formData.pan_no, docPan);
+          if (!certComp.match) {
+            const normPan = Normalize.identifier(formData.pan_no);
+            const normDocPan = Normalize.identifier(docPan);
+            if (normPan !== normDocPan) {
+              crossCheckIssues.push({
+                code: 'IDENTIFIER_MISMATCH',
+                field: 'PAN_NUMBER',
+                severity: 'BLOCKING',
+                message: `PAN mismatch: Form specifies "${formData.pan_no}", but verified PAN document shows "${docPan}".`,
+                formValue: formData.pan_no,
+                documentValue: docPan,
+                fix: 'Enter the 10-character PAN number matching your uploaded PAN card.'
+              });
+            }
           }
         }
       }
