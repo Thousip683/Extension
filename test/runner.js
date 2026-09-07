@@ -52,6 +52,51 @@ it('normalizes alphanumeric certificate identifiers', () => {
   assert.strictEqual(Normalize.identifier('AP/123/456'), 'AP123456');
 });
 
+it('normalizes and validates correctly typed email addresses', () => {
+  assert.strictEqual(Normalize.email('  Applicant@Domain.Gov.In '), 'applicant@domain.gov.in');
+  const valid1 = Normalize.validateEmail('applicant@domain.gov.in');
+  assert.strictEqual(valid1.isValid, true);
+  const valid2 = Normalize.validateEmail('user.name+tag@gmail.com');
+  assert.strictEqual(valid2.isValid, true);
+});
+
+it('identifies wrongly typed email addresses with specific error codes', () => {
+  // Missing @
+  const noAt = Normalize.validateEmail('applicantdomain.gov.in');
+  assert.strictEqual(noAt.isValid, false);
+  assert.strictEqual(noAt.code, 'EMAIL_MISSING_AT');
+
+  // Spaces
+  const hasSpace = Normalize.validateEmail('applicant @gmail.com');
+  assert.strictEqual(hasSpace.isValid, false);
+  assert.strictEqual(hasSpace.code, 'EMAIL_CONTAINS_SPACES');
+
+  // Multiple @
+  const multiAt = Normalize.validateEmail('applicant@@gmail.com');
+  assert.strictEqual(multiAt.isValid, false);
+  assert.strictEqual(multiAt.code, 'EMAIL_MULTIPLE_AT');
+
+  // Comma instead of dot in domain
+  const commaDomain = Normalize.validateEmail('applicant@gmail,com');
+  assert.strictEqual(commaDomain.isValid, false);
+  assert.strictEqual(commaDomain.code, 'EMAIL_COMMA_IN_DOMAIN');
+
+  // Missing domain / TLD
+  const noTld = Normalize.validateEmail('applicant@gmail');
+  assert.strictEqual(noTld.isValid, false);
+  assert.strictEqual(noTld.code, 'EMAIL_MISSING_TLD');
+
+  // Consecutive dots
+  const consecDots = Normalize.validateEmail('applicant..name@gmail.com');
+  assert.strictEqual(consecDots.isValid, false);
+  assert.strictEqual(consecDots.code, 'EMAIL_CONSECUTIVE_DOTS');
+
+  // Domain typo suggestion
+  const typo = Normalize.validateEmail('applicant@gmial.com');
+  assert.strictEqual(typo.isValid, false);
+  assert.strictEqual(typo.code, 'EMAIL_DOMAIN_TYPO');
+});
+
 // 2. Document Parser Tests (Official Certs & Aadhaar IDs)
 console.log('\n2. Document Parser (Aadhaar, PAN, Certificates):');
 it('parses structured government certificates', () => {

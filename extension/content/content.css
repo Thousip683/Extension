@@ -217,42 +217,20 @@
   border: 1px solid #bae6fd;
 }
 
-/* In-Page Field Highlights */
-.eg-field-error {
-  border-color: #ef4444 !important;
-  background-color: #fff1f2 !important;
-  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.25) !important;
-  animation: eg-shake 0.4s ease;
-}
-
-@keyframes eg-shake {
-
-  0%,
-  100% {
-    transform: translateX(0);
-  }
-
-  20%,
-  60% {
-    transform: translateX(-4px);
-  }
-
-  40%,
-  80% {
-    transform: translateX(4px);
-  }
-}
-
+/* In-Page Warning Message - Rendered directly below the input field without altering field colors */
 .eg-inline-tooltip {
-  display: inline-block;
-  background: #fee2e2;
-  color: #991b1b;
-  font-size: 0.75rem;
-  padding: 4px 8px;
-  border-radius: 4px;
-  margin-top: 4px;
-  border: 1px solid #fca5a5;
-  font-family: 'Inter', system-ui, sans-serif;
+  display: block;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 0.78rem;
+  padding: 5px 10px;
+  border-radius: 6px;
+  margin-top: 5px;
+  margin-bottom: 4px;
+  border: 1px solid #fecaca;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  line-height: 1.4;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 /* Slide-out Drawer */
@@ -350,6 +328,109 @@
 .eg-drawer-close:hover {
   color: white;
   background: rgba(255, 255, 255, 0.1);
+}
+
+/* ─── Field Navigator Toolbar in Sidebar ─── */
+.eg-field-navigator {
+  background: #1e293b;
+  color: #f8fafc;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid #334155;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+  flex-shrink: 0;
+}
+
+.eg-nav-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.eg-nav-icon {
+  font-size: 1.15rem;
+  flex-shrink: 0;
+}
+
+.eg-nav-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.eg-nav-label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #f1f5f9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 170px;
+}
+
+.eg-nav-counter {
+  font-size: 0.7rem;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.eg-nav-buttons {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.eg-nav-btn {
+  background: #334155;
+  color: #f8fafc;
+  border: 1px solid #475569;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.18s ease;
+  font-family: inherit;
+}
+
+.eg-nav-btn:hover:not(:disabled) {
+  background: #475569;
+  border-color: #64748b;
+  transform: translateY(-1px);
+}
+
+.eg-nav-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.eg-nav-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  background: #1e293b;
+  border-color: #334155;
+  color: #64748b;
+  transform: none;
+}
+
+/* Pulse animation when jumping to field */
+@keyframes eg-field-pulse {
+  0% { outline: 3px solid rgba(59, 130, 246, 0.95); box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.4); }
+  50% { outline: 3px solid rgba(59, 130, 246, 1); box-shadow: 0 0 0 8px rgba(59, 130, 246, 0.2); }
+  100% { outline: 2px solid rgba(59, 130, 246, 0.3); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+}
+
+.eg-focused-field-pulse {
+  animation: eg-field-pulse 1.2s ease-out !important;
+  outline-offset: 2px;
 }
 
 .eg-drawer-body {
@@ -1006,12 +1087,6 @@
   color: #ffffff;
 }
 
-/* Ensure file dropzones highlight in red on wrong document error */
-.upload-dropzone.eg-field-error {
-  border-color: #ef4444 !important;
-  background-color: #fff1f2 !important;
-  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.25) !important;
-}
 
 /* ─── Blur Rejection Banner & Dropzone ─── */
 .eg-blur-banner {

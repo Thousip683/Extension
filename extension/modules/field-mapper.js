@@ -52,11 +52,6 @@
       autocomplete: [],
       types: ['select-one', 'text']
     },
-    GENDER: {
-      regex: /(gender|sex)/i,
-      autocomplete: ['sex'],
-      types: ['select-one', 'text']
-    },
     EMAIL: {
       regex: /(email|mail|e[_\-\s]?mail)/i,
       autocomplete: ['email'],
@@ -76,21 +71,6 @@
       regex: /(declaration|declare|confirm|agree|terms|consent)/i,
       autocomplete: [],
       types: ['checkbox']
-    },
-    BANK_ACCOUNT: {
-      regex: /(bank[_\-\s]?account|acc[_\-\s]?(no|num|number)|account[_\-\s]?(no|num|number)|dbt[_\-\s]?bank)/i,
-      autocomplete: [],
-      types: ['text', 'number', 'tel']
-    },
-    IFSC_CODE: {
-      regex: /(ifsc[_\-\s]?(code)?|branch[_\-\s]?code)/i,
-      autocomplete: [],
-      types: ['text']
-    },
-    PINCODE: {
-      regex: /(pin[_\-\s]?code|postal[_\-\s]?code|^pincode$|^zip$)/i,
-      autocomplete: ['postal-code'],
-      types: ['text', 'number']
     }
   };
 
@@ -110,15 +90,61 @@
       const autocomplete = element.getAttribute('autocomplete') || '';
       const ariaLabel = element.getAttribute('aria-label') || '';
 
-      // Find associated label text
+      // Find associated label text (with support for label-free forms & login pages)
       let labelText = '';
-      if (id) {
+
+      // 1. Standard label[for="id"]
+      if (id && typeof document !== 'undefined') {
         const labelEl = document.querySelector(`label[for="${id}"]`);
         if (labelEl) labelText = labelEl.textContent.trim();
       }
-      if (!labelText) {
+
+      // 2. Floating Labels (sibling <label> following the <input> as in Bootstrap 5 / Tailwind)
+      if (!labelText && element.nextElementSibling) {
+        const next = element.nextElementSibling;
+        if (next && ['LABEL', 'SPAN', 'P'].includes(next.tagName)) {
+          const txt = (next.textContent || '').trim();
+          if (txt && txt.length <= 60) labelText = txt;
+        }
+      }
+
+      // 3. Preceding sibling label or span (e.g. <span>Email / Username</span><input>)
+      if (!labelText && element.previousElementSibling) {
+        const prev = element.previousElementSibling;
+        if (prev && ['LABEL', 'SPAN', 'DIV', 'P', 'STRONG', 'B'].includes(prev.tagName)) {
+          const txt = (prev.textContent || '').trim();
+          if (txt && txt.length <= 60) labelText = txt;
+        }
+      }
+
+      // 4. Wrapping <label>
+      if (!labelText && typeof element.closest === 'function') {
         const parentLabel = element.closest('label');
         if (parentLabel) labelText = parentLabel.textContent.trim();
+      }
+
+      // 5. Accessibility attributes (aria-labelledby, aria-label, aria-placeholder, title)
+      if (!labelText && typeof document !== 'undefined') {
+        const labelledBy = element.getAttribute('aria-labelledby');
+        if (labelledBy) {
+          const lEl = document.getElementById(labelledBy);
+          if (lEl) labelText = lEl.textContent.trim();
+        }
+      }
+      if (!labelText) {
+        labelText = (element.getAttribute('aria-label') || element.getAttribute('aria-placeholder') || element.getAttribute('title') || '').trim();
+      }
+
+      // 6. Parent container heading/label (.form-group, .form-floating, .field, .auth-input, etc.)
+      if (!labelText && typeof element.closest === 'function') {
+        const container = element.closest('.form-group, .form-floating, .input-group, .field, .form-row, .control, .login-field, .auth-input');
+        if (container) {
+          const heading = container.querySelector('label, .label, span, p');
+          if (heading && heading !== element) {
+            const txt = (heading.textContent || '').trim();
+            if (txt && txt.length <= 60) labelText = txt;
+          }
+        }
       }
 
       // Check special element types first
@@ -127,6 +153,24 @@
           type: 'FILE_UPLOAD',
           confidence: 1.0,
           label: labelText || name || id || 'Upload File'
+        };
+      }
+
+      if (type === 'email') {
+        return {
+          type: 'EMAIL',
+          confidence: 1.0,
+          label: labelText || name || id || 'Email Address'
+        };
+      }
+
+      // Dynamic fallback for login fields: if user entered text with @ into a text input
+      const currentVal = (element.value || '').trim();
+      if (currentVal && currentVal.includes('@') && !['password', 'hidden', 'file', 'checkbox', 'radio'].includes(type)) {
+        return {
+          type: 'EMAIL',
+          confidence: 0.95,
+          label: labelText || placeholder || name || id || 'Email Address'
         };
       }
 

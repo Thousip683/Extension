@@ -153,12 +153,12 @@ Cert No: AP123456`,
 
       // ── Step 2: Local AI Vision Backend (Zero UI Key Needed) ──
       try {
-        // Check port 5001 first (avoids macOS AirPlay), fallback to 5000
+        const bFetch = window.ErrorGuard.backendFetch || fetch;
         let backendUrl = 'http://localhost:5001';
-        let healthCheck = await fetch(`${backendUrl}/api/health`).catch(() => null);
+        let healthCheck = await bFetch(`${backendUrl}/api/health`).catch(() => null);
         if (!healthCheck || !healthCheck.ok) {
           backendUrl = 'http://localhost:5000';
-          healthCheck = await fetch(`${backendUrl}/api/health`).catch(() => null);
+          healthCheck = await bFetch(`${backendUrl}/api/health`).catch(() => null);
         }
 
         if (healthCheck && healthCheck.ok) {
@@ -171,17 +171,18 @@ Cert No: AP123456`,
           });
 
           onProgress(45, 'Gemini AI parsing unlabelled document & layout...');
-          const backendRes = await fetch(`${backendUrl}/api/analyze-document`, {
+          const detectedMime = file.type || (file.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/png');
+          const backendRes = await bFetch(`${backendUrl}/api/analyze-document`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               fileData: base64Data,
-              mimeType: file.type || (file.name.endsWith('.pdf') ? 'application/pdf' : 'image/png'),
+              mimeType: detectedMime,
               fileName: file.name
             })
           });
 
-          if (backendRes.ok) {
+          if (backendRes && backendRes.ok) {
             const data = await backendRes.json();
             if (data.success && data.fields) {
               onProgress(100, 'AI Analysis Complete');
@@ -224,6 +225,16 @@ Cert No: AP123456`,
       }
 
       // ── Step 4: Offline Tesseract.js OCR (Fallback) ──
+      const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+      if (isPdf) {
+        window.ErrorGuard.Logger.warn('OcrEngine', 'PDF uploaded but offline Tesseract does not support raw PDF files.');
+        return {
+          text: '',
+          confidence: 0,
+          warning: 'PDF extraction requires the AI Vision backend server.'
+        };
+      }
+
       window.ErrorGuard.Logger.info('OcrEngine', `Starting offline Tesseract.js OCR for: ${file.name} (${file.size} bytes)`);
 
       // Check if Tesseract is available
@@ -300,6 +311,16 @@ Cert No: AP123456`,
      */
     async _fallbackExtract(file, onProgress) {
       onProgress(50, 'Attempting basic text extraction...');
+
+      const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+      if (isPdf) {
+        onProgress(100, 'Extraction Finished');
+        return {
+          text: '',
+          confidence: 0,
+          warning: 'Cannot extract text from binary PDF without AI Vision backend.'
+        };
+      }
 
       let extracted = '';
       try {

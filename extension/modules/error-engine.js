@@ -39,9 +39,8 @@
       const warningIssues = allIssues.filter(i => i.severity === 'WARNING');
       const infoIssues = allIssues.filter(i => i.severity === 'INFO');
 
-      const hasAnyEnteredData = !!(formData.full_name || formData.dob || formData.certificate_no || formData.aadhaar_no || formData.pan_no || formData.hasFile || formData.declaration);
-      const isReady = hasAnyEnteredData && blockingIssues.length === 0;
-      const status = isReady ? 'READY TO SUBMIT' : (hasAnyEnteredData ? 'NOT READY TO SUBMIT' : 'INCOMPLETE APPLICATION');
+      const isReady = blockingIssues.length === 0;
+      const status = isReady ? 'READY TO SUBMIT' : 'NOT READY TO SUBMIT';
 
       // Application Health Score calculation (0 to 100)
       // Total potential baseline points: 100
@@ -50,6 +49,9 @@
       score -= blockingIssues.length * 25;
       score -= warningIssues.length * 8;
       score = Math.max(10, Math.min(100, score));
+
+      const hasFileInput = !!(formData.hasFileInput || formData.hasFile || fileIssues.length > 0);
+      const isFileRequired = formIssues.some(i => i.code === 'REQUIRED_FIELD_MISSING' && (i.field === 'FILE_UPLOAD' || (i.element && i.element.type === 'file')));
 
       // Checklist section summaries
       const checklist = {
@@ -61,6 +63,8 @@
           valid: formIssues.filter(i => i.severity === 'BLOCKING').length === 0
         },
         document: {
+          hasFileInput,
+          required: isFileRequired,
           uploaded: !!formData.hasFile,
           formatValid: fileIssues.filter(i => i.code === 'FILE_TYPE_NOT_ALLOWED').length === 0,
           sizeValid: fileIssues.filter(i => i.code === 'FILE_TOO_LARGE').length === 0,

@@ -95,4 +95,38 @@
       return await this.set('EG_AI_AUTOFILL_MODE', !!enabled);
     }
   };
+
+  /**
+   * Helper to perform backend fetch via background service worker,
+   * completely bypassing webpage CORS, loopback, and Private Network Access restrictions.
+   */
+  window.ErrorGuard.backendFetch = async function (url, options = {}) {
+    if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.sendMessage) {
+      return new Promise((resolve) => {
+        try {
+          chrome.runtime.sendMessage({
+            action: 'FETCH_BACKEND',
+            url,
+            method: options.method || 'GET',
+            headers: options.headers,
+            body: options.body ? (typeof options.body === 'string' ? JSON.parse(options.body) : options.body) : undefined
+          }, (res) => {
+            if (chrome.runtime.lastError || !res) {
+              fetch(url, options).then(resolve).catch(() => resolve({ ok: false, status: 0 }));
+            } else {
+              resolve({
+                ok: !!res.ok,
+                status: res.status || (res.ok ? 200 : 500),
+                json: async () => res.data,
+                text: async () => typeof res.data === 'string' ? res.data : JSON.stringify(res.data)
+              });
+            }
+          });
+        } catch (e) {
+          fetch(url, options).then(resolve).catch(() => resolve({ ok: false, status: 0 }));
+        }
+      });
+    }
+    return fetch(url, options).catch(() => ({ ok: false, status: 0 }));
+  };
 })();

@@ -15,9 +15,13 @@
     scan() {
       const forms = Array.from(document.querySelectorAll('form'));
       const formControls = Array.from(document.querySelectorAll('input, select, textarea'));
-      const submitButtons = Array.from(document.querySelectorAll('button[type="submit"], input[type="submit"], button:not([type])')).filter(btn => {
-        const text = (btn.textContent || btn.value || '').toLowerCase();
-        return text.includes('submit') || text.includes('apply') || text.includes('proceed') || text.includes('send');
+      const submitButtons = Array.from(document.querySelectorAll('button, input[type="submit"], [role="button"], a.btn, a.button')).filter(btn => {
+        const type = (btn.getAttribute('type') || '').toLowerCase();
+        if (type === 'submit') return true;
+        const text = (btn.textContent || btn.value || '').toLowerCase().trim();
+        return text.includes('submit') || text.includes('apply') || text.includes('proceed') || text.includes('send') ||
+               text.includes('log in') || text.includes('login') || text.includes('sign in') || text.includes('signin') ||
+               text.includes('continue') || text.includes('next');
       });
 
       const detectedFields = [];

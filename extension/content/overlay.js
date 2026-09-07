@@ -24,6 +24,7 @@
       this.aiAutoFillMode = false; // false = Manual Guard, true = AI Auto-Fill
       this.hasForm = true;
       this.onProceedSubmit = null;
+      this.currentNavIndex = -1;
     }
 
     setOnProceedSubmit(callback) {
@@ -132,6 +133,23 @@
             <button type="button" class="eg-drawer-close" id="egDrawerClose">✕</button>
           </div>
         </div>
+        <div class="eg-field-navigator" id="egFieldNavigator">
+          <div class="eg-nav-info">
+            <span class="eg-nav-icon">🧭</span>
+            <div class="eg-nav-text">
+              <span class="eg-nav-label" id="egNavLabel">Field Navigator</span>
+              <span class="eg-nav-counter" id="egNavCounter">0 of 0 fields</span>
+            </div>
+          </div>
+          <div class="eg-nav-buttons">
+            <button type="button" class="eg-nav-btn" id="egNavPrevBtn" title="Jump to Previous Field" disabled>
+              ◀ Prev
+            </button>
+            <button type="button" class="eg-nav-btn" id="egNavNextBtn" title="Jump to Next Field" disabled>
+              Next ▶
+            </button>
+          </div>
+        </div>
         <div class="eg-drawer-body" id="egDrawerBody">
           <!-- Populated dynamically -->
         </div>
@@ -142,6 +160,31 @@
 
       document.getElementById('egDrawerClose').addEventListener('click', () => {
         this.closeDrawer();
+      });
+
+      document.getElementById('egNavPrevBtn')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.navigatePreviousField();
+      });
+
+      document.getElementById('egNavNextBtn')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.navigateNextField();
+      });
+
+      document.addEventListener('focusin', (e) => {
+        if (!e.target) return;
+        if (e.target.closest && e.target.closest('#error-guard-drawer, #error-guard-badge, #error-guard-modal, #eg-autofill-banner, #eg-wrongdoc-banner, #eg-blur-banner')) {
+          return;
+        }
+        const fields = this.getVisibleFormFields();
+        const idx = fields.indexOf(e.target);
+        if (idx !== -1) {
+          this.currentNavIndex = idx;
+          this.updateFieldNavigator();
+        }
       });
 
       // 3. Pre-Submit Interception Modal
@@ -554,6 +597,8 @@
 
       if (options.openDrawer) {
         this.openDrawer();
+      } else {
+        this.updateFieldNavigator();
       }
     }
 
@@ -573,42 +618,54 @@
 
         if (el) {
           activeElements.add(el);
-          el.classList.add('eg-field-error');
           this.highlightedElements.add(el);
 
-          // If file input or contained within an upload dropzone, highlight the dropzone container
-          const dropzone = (el.type === 'file' || el.tagName.toLowerCase() === 'input') ? el.closest('.upload-dropzone') : null;
-          if (dropzone) {
-            activeElements.add(dropzone);
-            dropzone.classList.add('eg-field-error');
-            this.highlightedElements.add(dropzone);
+          // Find existing tooltip or create a new one positioned directly below the input
+          let tooltip = el.nextElementSibling && el.nextElementSibling.classList.contains('eg-inline-tooltip')
+            ? el.nextElementSibling
+            : null;
+
+          if (!tooltip && (el.id || el.name)) {
+            tooltip = document.querySelector(`.eg-inline-tooltip[data-for="${el.id || el.name}"]`);
           }
 
-          const parent = dropzone || el.parentElement || el;
-          const existingTooltip = parent.querySelector('.eg-inline-tooltip');
           const tooltipHtml = `⚠️ <strong>${issue.code}:</strong> ${issue.message}`;
-          if (existingTooltip) {
-            if (existingTooltip.innerHTML !== tooltipHtml) {
-              existingTooltip.innerHTML = tooltipHtml;
+          if (tooltip) {
+            if (tooltip.innerHTML !== tooltipHtml) {
+              tooltip.innerHTML = tooltipHtml;
             }
           } else {
-            const tooltip = document.createElement('div');
+            tooltip = document.createElement('div');
             tooltip.className = 'eg-inline-tooltip';
+            if (el.id || el.name) tooltip.setAttribute('data-for', el.id || el.name);
             tooltip.innerHTML = tooltipHtml;
-            parent.appendChild(tooltip);
+
+            // Place warning message directly below the input element (or dropzone if file input)
+            const dropzone = (el.type === 'file' || el.tagName.toLowerCase() === 'input') ? el.closest('.upload-dropzone') : null;
+            const target = dropzone || el;
+            if (target.nextSibling) {
+              target.parentNode.insertBefore(tooltip, target.nextSibling);
+            } else if (target.parentNode) {
+              target.parentNode.appendChild(tooltip);
+            }
           }
         }
       }
 
-      // Remove highlight and tooltip from elements that are no longer in error
+      // Remove warning messages from elements that are no longer in error
       for (const el of Array.from(this.highlightedElements)) {
         if (!activeElements.has(el)) {
           el.classList.remove('eg-field-error');
+          if (el.nextElementSibling && el.nextElementSibling.classList.contains('eg-inline-tooltip')) {
+            el.nextElementSibling.remove();
+          }
+          if (el.id || el.name) {
+            document.querySelectorAll(`.eg-inline-tooltip[data-for="${el.id || el.name}"]`).forEach(t => t.remove());
+          }
           const dropzone = (el.type === 'file' || el.tagName?.toLowerCase() === 'input') ? el.closest('.upload-dropzone') : null;
-          if (dropzone) dropzone.classList.remove('eg-field-error');
-          const parent = dropzone || el.parentElement || el;
-          const tooltip = parent.querySelector('.eg-inline-tooltip');
-          if (tooltip) tooltip.remove();
+          if (dropzone && dropzone.nextElementSibling && dropzone.nextElementSibling.classList.contains('eg-inline-tooltip')) {
+            dropzone.nextElementSibling.remove();
+          }
           this.highlightedElements.delete(el);
         }
       }
@@ -748,14 +805,16 @@
               <span>${report.checklist.form.valid ? '✅' : '❌'}</span>
               <span>Form Fields Completed</span>
             </div>
-            <div class="eg-check-item ${report.checklist.document.uploaded ? (report.checklist.document.sizeValid && report.checklist.document.formatValid ? 'pass' : 'fail') : 'fail'}">
-              <span>${report.checklist.document.uploaded && report.checklist.document.sizeValid ? '✅' : '❌'}</span>
-              <span>Document Size & Format</span>
+            ${report.checklist.document?.hasFileInput ? `
+            <div class="eg-check-item ${report.checklist.document.uploaded ? (report.checklist.document.sizeValid && report.checklist.document.formatValid ? 'pass' : 'fail') : (report.checklist.document.required ? 'fail' : 'pending')}">
+              <span>${report.checklist.document.uploaded ? (report.checklist.document.sizeValid && report.checklist.document.formatValid ? '✅' : '❌') : (report.checklist.document.required ? '❌' : '⏳')}</span>
+              <span>${report.checklist.document.uploaded ? 'Document Size & Format' : (report.checklist.document.required ? 'Document Required' : 'Document Optional')}</span>
             </div>
             <div class="eg-check-item ${(report.checklist.verification.nameMatch === true || report.checklist.verification.dobMatch === true) ? 'pass' : (report.checklist.verification.nameMatch === false || report.checklist.verification.dobMatch === false ? 'fail' : 'pending')}">
               <span>${(report.checklist.verification.nameMatch === true || report.checklist.verification.dobMatch === true) ? '✅' : (report.checklist.verification.nameMatch === false || report.checklist.verification.dobMatch === false ? '❌' : '⏳')}</span>
               <span>Name & DOB Cross-Check</span>
             </div>
+            ` : ''}
           </div>
         </div>
       `;
@@ -836,6 +895,9 @@
     }
 
     showPreSubmitModal(report) {
+      if (!report || !report.issues || !report.issues.blocking || report.issues.blocking.length === 0) {
+        return;
+      }
       if (!this.modalEl) this.init();
       const issuesContainer = document.getElementById('egModalIssues');
 
@@ -883,6 +945,7 @@
       if (this.drawerEl) {
         this.drawerEl.classList.remove('eg-drawer-closed');
         this.drawerEl.classList.add('eg-drawer-open');
+        this.updateFieldNavigator();
       }
     }
 
@@ -891,6 +954,198 @@
         this.drawerEl.classList.remove('eg-drawer-open');
         this.drawerEl.classList.add('eg-drawer-closed');
       }
+    }
+
+    // ─── Field Navigator (Jump to Next / Previous Field) ───
+    getVisibleFormFields() {
+      const selector = 'input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="reset"]), select, textarea';
+      const elements = Array.from(document.querySelectorAll(selector));
+
+      return elements.filter(el => {
+        // Exclude inputs inside Error Guard UI elements
+        if (el.closest('#error-guard-drawer, #error-guard-badge, #error-guard-modal, #eg-autofill-banner, #eg-wrongdoc-banner, #eg-blur-banner, .eg-modal-overlay')) {
+          return false;
+        }
+        // Exclude disabled elements (cannot receive user interaction/focus)
+        if (el.disabled) {
+          return false;
+        }
+        // Exclude hidden elements
+        const style = window.getComputedStyle(el);
+        if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') {
+          return false;
+        }
+        return (el.offsetWidth > 0 || el.offsetHeight > 0 || el.getClientRects().length > 0);
+      });
+    }
+
+    getFieldLabel(el) {
+      if (!el) return 'Input Field';
+
+      // 1. label[for="id"]
+      if (el.id) {
+        const label = document.querySelector(`label[for="${el.id}"]`);
+        if (label && label.innerText.trim()) {
+          return label.innerText.replace(/\*/g, '').replace(/[:]/g, '').trim();
+        }
+      }
+      // 2. Parent label element
+      const parentLabel = el.closest('label');
+      if (parentLabel && parentLabel.innerText.trim()) {
+        return parentLabel.innerText.replace(/\*/g, '').replace(/[:]/g, '').trim();
+      }
+      // 3. Form group label or header
+      const group = el.closest('.form-group, .form-row, .field-wrap, .form-field, .doc-upload-block');
+      if (group) {
+        const groupLabel = group.querySelector('label, .form-label, strong, .doc-label');
+        if (groupLabel && groupLabel.innerText.trim()) {
+          return groupLabel.innerText.replace(/\*/g, '').replace(/[:]/g, '').trim();
+        }
+      }
+      // 4. aria-label or placeholder
+      if (el.getAttribute('aria-label')) {
+        return el.getAttribute('aria-label').trim();
+      }
+      if (el.placeholder && el.placeholder.trim()) {
+        return el.placeholder.trim();
+      }
+      // 5. Semantic name or id
+      if (el.name) {
+        return el.name.replace(/([A-Z])/g, ' $1').replace(/[_-]/g, ' ').replace(/^\w/, c => c.toUpperCase()).trim();
+      }
+      if (el.id) {
+        return el.id.replace(/([A-Z])/g, ' $1').replace(/[_-]/g, ' ').replace(/^\w/, c => c.toUpperCase()).trim();
+      }
+      return `${el.tagName.toLowerCase()} field`;
+    }
+
+    updateFieldNavigator() {
+      const navEl = document.getElementById('egFieldNavigator');
+      if (!navEl) return;
+
+      const fields = this.getVisibleFormFields();
+      const total = fields.length;
+      const prevBtn = document.getElementById('egNavPrevBtn');
+      const nextBtn = document.getElementById('egNavNextBtn');
+      const labelEl = document.getElementById('egNavLabel');
+      const counterEl = document.getElementById('egNavCounter');
+
+      // Edge case: No input fields on page
+      if (total === 0) {
+        if (labelEl) labelEl.textContent = 'No Input Fields';
+        if (counterEl) counterEl.textContent = '0 of 0 fields';
+        if (prevBtn) prevBtn.disabled = true;
+        if (nextBtn) nextBtn.disabled = true;
+        this.currentNavIndex = -1;
+        return;
+      }
+
+      // Edge case: Only 1 input field on page
+      if (total === 1) {
+        this.currentNavIndex = 0;
+        const fieldName = this.getFieldLabel(fields[0]);
+        if (labelEl) labelEl.textContent = fieldName;
+        if (counterEl) counterEl.textContent = 'Field 1 of 1';
+        if (prevBtn) prevBtn.disabled = true;
+        if (nextBtn) nextBtn.disabled = true;
+        return;
+      }
+
+      // Ensure index is within range if active
+      if (this.currentNavIndex >= total) {
+        this.currentNavIndex = total - 1;
+      }
+
+      // No field currently selected yet
+      if (this.currentNavIndex < 0) {
+        if (labelEl) labelEl.textContent = 'Navigate Fields';
+        if (counterEl) counterEl.textContent = `${total} fields on page`;
+        if (prevBtn) prevBtn.disabled = true;
+        if (nextBtn) nextBtn.disabled = false;
+        return;
+      }
+
+      // An active field is selected
+      const currentEl = fields[this.currentNavIndex];
+      const fieldName = this.getFieldLabel(currentEl);
+      if (labelEl) labelEl.textContent = fieldName;
+      if (counterEl) counterEl.textContent = `Field ${this.currentNavIndex + 1} of ${total}`;
+
+      // Edge cases: First or Last input field
+      if (prevBtn) {
+        prevBtn.disabled = (this.currentNavIndex <= 0);
+      }
+      if (nextBtn) {
+        nextBtn.disabled = (this.currentNavIndex >= total - 1);
+      }
+    }
+
+    navigateNextField() {
+      const fields = this.getVisibleFormFields();
+      if (fields.length === 0) {
+        this.updateFieldNavigator();
+        return;
+      }
+
+      let targetIndex;
+      if (this.currentNavIndex < 0) {
+        targetIndex = 0;
+      } else if (this.currentNavIndex < fields.length - 1) {
+        targetIndex = this.currentNavIndex + 1;
+      } else {
+        // Edge case: Already at last field
+        this.updateFieldNavigator();
+        return;
+      }
+
+      this.navigateToField(targetIndex, fields);
+    }
+
+    navigatePreviousField() {
+      const fields = this.getVisibleFormFields();
+      if (fields.length === 0) {
+        this.updateFieldNavigator();
+        return;
+      }
+
+      let targetIndex;
+      if (this.currentNavIndex > 0) {
+        targetIndex = this.currentNavIndex - 1;
+      } else {
+        // Edge case: Already at first field
+        this.updateFieldNavigator();
+        return;
+      }
+
+      this.navigateToField(targetIndex, fields);
+    }
+
+    navigateToField(index, fieldsList = null) {
+      const fields = fieldsList || this.getVisibleFormFields();
+      if (index < 0 || index >= fields.length) return;
+
+      this.currentNavIndex = index;
+      const targetEl = fields[index];
+
+      // Smooth scroll target field to center of viewport
+      targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+      // Focus field
+      try {
+        targetEl.focus({ preventScroll: true });
+      } catch (e) {
+        targetEl.focus();
+      }
+
+      // Temporary pulse animation highlight for clean visual feedback
+      document.querySelectorAll('.eg-focused-field-pulse').forEach(el => el.classList.remove('eg-focused-field-pulse'));
+      targetEl.classList.add('eg-focused-field-pulse');
+      setTimeout(() => {
+        targetEl.classList.remove('eg-focused-field-pulse');
+      }, 1400);
+
+      // Update sidebar navigator state
+      this.updateFieldNavigator();
     }
 
     // ─── AI Auto-Fill & Auto-Correct In-Page Components ───

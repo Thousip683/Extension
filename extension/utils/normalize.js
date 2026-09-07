@@ -144,6 +144,224 @@
         return `${parts[2]}/${parts[1]}/${parts[0]}`;
       }
       return isoDate;
+    },
+
+    /**
+     * Normalizes email address: trims whitespace and lowercases
+     */
+    email(emailStr) {
+      if (!emailStr || typeof emailStr !== 'string') return '';
+      return emailStr.trim().toLowerCase();
+    },
+
+    /**
+     * Validates an email address against robust format rules and regex patterns.
+     * Identifies specific errors in wrongly typed email addresses.
+     * @param {string} emailStr
+     * @returns {{ isValid: boolean, code?: string, error?: string, fix?: string }}
+     */
+    validateEmail(emailStr) {
+      if (!emailStr || typeof emailStr !== 'string') {
+        return { isValid: false, code: 'EMAIL_EMPTY', error: 'Email address cannot be empty.' };
+      }
+      const val = emailStr.trim();
+      if (!val) {
+        return { isValid: false, code: 'EMAIL_EMPTY', error: 'Email address cannot be empty.' };
+      }
+
+      // 1. Whitespace check
+      if (/\s/.test(val)) {
+        return {
+          isValid: false,
+          code: 'EMAIL_CONTAINS_SPACES',
+          error: `Email address cannot contain spaces (entered: "${val}").`,
+          fix: 'Remove all spaces from the email address.'
+        };
+      }
+
+      // 2. @ presence check
+      if (!val.includes('@')) {
+        return {
+          isValid: false,
+          code: 'EMAIL_MISSING_AT',
+          error: `Email address is missing the '@' symbol (entered: "${val}").`,
+          fix: 'Enter an email with an "@" symbol (e.g. name@example.com).'
+        };
+      }
+
+      // 3. Multiple @ check
+      const atParts = val.split('@');
+      if (atParts.length > 2) {
+        return {
+          isValid: false,
+          code: 'EMAIL_MULTIPLE_AT',
+          error: `Email address cannot contain multiple '@' symbols (entered: "${val}").`,
+          fix: 'Ensure your email contains only one "@" symbol.'
+        };
+      }
+
+      const [localPart, domainPart] = atParts;
+
+      // 4. Local part (username before @)
+      if (!localPart || localPart.length === 0) {
+        return {
+          isValid: false,
+          code: 'EMAIL_MISSING_LOCAL_PART',
+          error: `Email address is missing the username before '@' (entered: "${val}").`,
+          fix: 'Enter your email username before the @ symbol.'
+        };
+      }
+
+      if (localPart.startsWith('.') || localPart.endsWith('.')) {
+        return {
+          isValid: false,
+          code: 'EMAIL_DOT_PLACEMENT',
+          error: `Email username cannot start or end with a dot (entered: "${val}").`,
+          fix: 'Remove leading or trailing dots from the email username.'
+        };
+      }
+
+      if (/\.{2,}/.test(localPart)) {
+        return {
+          isValid: false,
+          code: 'EMAIL_CONSECUTIVE_DOTS',
+          error: `Email username cannot contain consecutive dots '..' (entered: "${val}").`,
+          fix: 'Remove consecutive dots from your email username.'
+        };
+      }
+
+      // RFC 5322 characters in local part
+      const localRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+$/;
+      if (!localRegex.test(localPart)) {
+        return {
+          isValid: false,
+          code: 'EMAIL_INVALID_LOCAL_CHARS',
+          error: `Email username contains invalid characters (entered: "${val}").`,
+          fix: 'Use standard letters, numbers, and basic symbols.'
+        };
+      }
+
+      // 5. Domain part (after @)
+      if (!domainPart || domainPart.length === 0) {
+        return {
+          isValid: false,
+          code: 'EMAIL_MISSING_DOMAIN',
+          error: `Email address is missing the domain after '@' (entered: "${val}").`,
+          fix: 'Enter a complete domain (e.g. @gmail.com, @domain.gov.in).'
+        };
+      }
+
+      // 6. Typo check: comma in domain (e.g. user@gmail,com)
+      if (domainPart.includes(',')) {
+        const suggested = val.replace(/,/g, '.');
+        return {
+          isValid: false,
+          code: 'EMAIL_COMMA_IN_DOMAIN',
+          error: `Email domain contains a comma ',' instead of a dot '.' (entered: "${val}").`,
+          fix: `Did you mean "${suggested}"? Replace the comma with a dot.`
+        };
+      }
+
+      // 7. Domain must contain dot
+      if (!domainPart.includes('.')) {
+        return {
+          isValid: false,
+          code: 'EMAIL_MISSING_TLD',
+          error: `Email domain "${domainPart}" is missing a top-level extension like .com, .in, or .org.`,
+          fix: `Add a valid domain extension (e.g. "${val}.com").`
+        };
+      }
+
+      // 8. Domain dot/hyphen placement
+      if (domainPart.startsWith('.') || domainPart.endsWith('.') || domainPart.startsWith('-') || domainPart.endsWith('-')) {
+        return {
+          isValid: false,
+          code: 'EMAIL_DOMAIN_DOT_PLACEMENT',
+          error: `Email domain cannot start or end with a dot or hyphen (entered: "${val}").`,
+          fix: 'Ensure the domain name begins and ends with letters or digits.'
+        };
+      }
+
+      if (/\.{2,}/.test(domainPart)) {
+        return {
+          isValid: false,
+          code: 'EMAIL_DOMAIN_CONSECUTIVE_DOTS',
+          error: `Email domain cannot contain consecutive dots '..' (entered: "${val}").`,
+          fix: 'Remove consecutive dots from the domain.'
+        };
+      }
+
+      // 9. Check domain labels
+      const domainLabels = domainPart.split('.');
+      for (const label of domainLabels) {
+        if (!label || label.length === 0) {
+          return {
+            isValid: false,
+            code: 'EMAIL_INVALID_DOMAIN_LABEL',
+            error: `Email domain contains an empty segment (entered: "${val}").`,
+            fix: 'Check the domain name format.'
+          };
+        }
+        if (!/^[a-zA-Z0-9-]+$/.test(label) || label.startsWith('-') || label.endsWith('-')) {
+          return {
+            isValid: false,
+            code: 'EMAIL_INVALID_DOMAIN_CHARS',
+            error: `Email domain segment "${label}" contains invalid characters.`,
+            fix: 'Domain can only contain letters, numbers, and hyphens.'
+          };
+        }
+      }
+
+      // 10. Top-Level Domain (TLD) must be letters only, at least 2 chars
+      const tld = domainLabels[domainLabels.length - 1];
+      if (!/^[a-zA-Z]{2,24}$/.test(tld)) {
+        return {
+          isValid: false,
+          code: 'EMAIL_INVALID_TLD',
+          error: `Email domain extension ".${tld}" is invalid (must be at least 2 letters, e.g. .com, .in, .org).`,
+          fix: 'Enter a valid domain extension like .com, .in, or .gov.in.'
+        };
+      }
+
+      // 11. Common domain typo hints
+      const domainLower = domainPart.toLowerCase();
+      const TYPO_MAP = {
+        'gmial.com': 'gmail.com',
+        'gamil.com': 'gmail.com',
+        'gmai.com': 'gmail.com',
+        'gmaill.com': 'gmail.com',
+        'yaho.com': 'yahoo.com',
+        'yahooo.com': 'yahoo.com',
+        'hotmial.com': 'hotmail.com',
+        'hotmai.com': 'hotmail.com',
+        'outlok.com': 'outlook.com',
+        'outloo.com': 'outlook.com',
+        'redifmail.com': 'rediffmail.com'
+      };
+
+      if (TYPO_MAP[domainLower]) {
+        const correctDomain = TYPO_MAP[domainLower];
+        const suggested = `${localPart}@${correctDomain}`;
+        return {
+          isValid: false,
+          code: 'EMAIL_DOMAIN_TYPO',
+          error: `Possible domain typo: "${domainPart}" looks like "${correctDomain}".`,
+          fix: `Did you mean "${suggested}"?`
+        };
+      }
+
+      // 12. Full standard RFC regex validation
+      const standardEmailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
+      if (!standardEmailRegex.test(val)) {
+        return {
+          isValid: false,
+          code: 'INVALID_EMAIL_FORMAT',
+          error: `Invalid email address format: "${val}".`,
+          fix: 'Please enter a valid email address (e.g. applicant@domain.gov.in).'
+        };
+      }
+
+      return { isValid: true };
     }
   };
 })();

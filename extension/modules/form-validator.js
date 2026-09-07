@@ -260,18 +260,31 @@
           }
         }
 
-        // Check 6: Email Format
-        if (sType === 'EMAIL' && value && value.trim() !== '') {
-          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) {
-            issues.push({
-              code: 'INVALID_EMAIL',
-              field: sType,
-              elementId: field.id,
-              element: field,
-              severity: 'WARNING',
-              message: `Invalid email format: "${value}".`,
-              fix: 'Please enter a valid email address (e.g. applicant@domain.gov.in).'
-            });
+        // Check 6: Email Format (Regex Pattern Validation for wrongly typed emails)
+        const fieldType = (field.getAttribute && field.getAttribute('type') || '').toLowerCase();
+        const containsAt = value && value.includes('@') && !['password', 'hidden', 'file', 'checkbox', 'radio'].includes(fieldType);
+        const contextStr = `${field.id || ''} ${field.name || ''} ${field.getAttribute && field.getAttribute('placeholder') || ''} ${semantic?.label || ''}`.toLowerCase();
+        const allowsUsername = /(user|username|login|id)/i.test(contextStr) && fieldType !== 'email';
+        const isDedicatedEmail = (sType === 'EMAIL' && !allowsUsername) || fieldType === 'email';
+
+        // Validate if it is a dedicated email field OR if the user attempted to type an email (contains @)
+        if ((isDedicatedEmail || containsAt) && value && value.trim() !== '') {
+          if (!allowsUsername || containsAt) {
+            const emailCheck = window.ErrorGuard.Normalize && window.ErrorGuard.Normalize.validateEmail
+              ? window.ErrorGuard.Normalize.validateEmail(value.trim())
+              : (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim()) ? { isValid: false, code: 'INVALID_EMAIL', error: `Invalid email format: "${value}".`, fix: 'Please enter a valid email address (e.g. applicant@domain.gov.in).' } : { isValid: true });
+
+            if (!emailCheck.isValid) {
+              issues.push({
+                code: emailCheck.code || 'INVALID_EMAIL',
+                field: sType || 'EMAIL',
+                elementId: field.id,
+                element: field,
+                severity: 'BLOCKING',
+                message: emailCheck.error || `Invalid email format: "${value}".`,
+                fix: emailCheck.fix || 'Please enter a valid email address (e.g. applicant@domain.gov.in).'
+              });
+            }
           }
         }
 

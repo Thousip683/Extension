@@ -21,4 +21,24 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     });
     return true; // Keep message channel open for asynchronous response
   }
+
+  // Relay backend API requests so they bypass webpage CORS/Private Network restrictions
+  if (message.action === 'FETCH_BACKEND') {
+    const { url, method, headers, body } = message;
+    fetch(url, {
+      method: method || 'GET',
+      headers: headers || { 'Content-Type': 'application/json' },
+      body: body ? (typeof body === 'string' ? body : JSON.stringify(body)) : undefined
+    })
+      .then(async (res) => {
+        const text = await res.text();
+        let data = null;
+        try { data = JSON.parse(text); } catch (e) { data = text; }
+        sendResponse({ ok: res.ok, status: res.status, data });
+      })
+      .catch((err) => {
+        sendResponse({ ok: false, error: err.message });
+      });
+    return true; // Keep message channel open for async response
+  }
 });
